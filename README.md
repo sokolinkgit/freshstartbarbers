@@ -68,6 +68,16 @@ Deploy the `dist/` folder (or the repo root on Vercel — the included `vercel.j
   Visit Us with directions + animated back-to-top), a giant outlined **FRESH START** watermark,
   and a legal bar with the 5.0 Google line.
 
+### Mobile optimisation
+Verified in a headless browser at **280 / 320 / 360 / 375 / 390 / 412 / 430 / 768 / 1024px**:
+document width equals viewport width at every size — **zero horizontal page scrolling** and no
+clipped text. Grid/flex children carry `min-width: 0` (so the booking date-strip scrolls inside
+its own box instead of stretching the page), `fr` tracks are `minmax(0, 1fr)`, buttons/labels
+wrap instead of forcing width, headings use fluid `clamp()` sizes with balanced wrapping, form
+controls are 16px (no iOS focus-zoom), slots become a tidy 3-up grid, and the footer watermark
+scales to fit. Internal rails (barbers, date strip) still swipe sideways by design — the page
+itself never does.
+
 ### Kept from the previous barber site
 Loading screen (logo, igniting stars, “5 Star Rated”), dark/light themes stored in
 `localStorage`, all **25 services & prices**, all **5 barbers**, hours (Thu opens 8:30 am,
