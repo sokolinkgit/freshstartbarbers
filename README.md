@@ -135,7 +135,7 @@ interactions in **`src/main.js`**.
 | `fade.jpg`, `beard.jpg` | Gallery (fade, beard) + footer CTA band |
 | `facial.jpg`, `massage.jpg`, `hands.jpg` | Gallery — face & body rituals |
 | `lounge.jpg` | Refreshments + Gallery |
-| `barber-*.jpg` | Five barber portraits (+`barber-dan.jpg` in Gallery) |
+| `barber-*.jpg` | Barber portraits (including Starkid in Gallery) |
 
 The supplied logo lives at `public/logo.png` (header, loader, favicon, footer).
 

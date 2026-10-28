@@ -96,7 +96,7 @@ export const BARBERS = [
   {
     id: 'starkid',
     name: 'Starkid Bright',
-    role: 'Master Barber',
+    role: 'Senior Barber',
     img: '/img/barber-starkid.jpg',
     initials: 'SB',
     specialties: ['Bespoke cuts', 'Line-ups', 'Beard sculpt'],
@@ -128,15 +128,6 @@ export const BARBERS = [
     initials: 'MF',
     specialties: ['Skin fades', 'Curl sponge', 'Kids cuts'],
     note: 'If it can be blended, it can be faded. Bring a reference.',
-  },
-  {
-    id: 'dan',
-    name: 'Dan Cuts',
-    role: 'Senior Barber',
-    img: '/img/barber-dan.jpg',
-    initials: 'DC',
-    specialties: ['Executive cuts', 'Grey blending', 'VIP rituals'],
-    note: 'Calm hands, exact finish — the chair executives ask for by name.',
   },
 ];
 
@@ -254,13 +245,13 @@ export const GALLERY = [
   { src: '/img/hands.jpg', cat: 'body', catLabel: 'Body & Hands', title: 'Manicure & Hand Care', detail: 'Exfoliation · cuticle grooming · buff at the marble counter', serviceId: 'manicure' },
   { src: '/img/hero.jpg', cat: 'cuts', catLabel: 'Cuts & Fades', title: 'The Bespoke Chair', detail: 'Tailored cut · scalp wash · custom styling', serviceId: 'bespoke' },
   { src: '/img/lounge.jpg', cat: 'lounge', catLabel: 'The Lounge', title: 'Coffee, Always On Us', detail: 'Coffee · tea · light bites with every service', serviceId: null },
-  { src: '/img/barber-dan.jpg', cat: 'lounge', catLabel: 'The Lounge', title: 'Dan Cuts — Senior Barber', detail: 'Senior chair · Suite K-5, 4th floor', serviceId: null },
+  { src: '/img/barber-starkid.jpg', cat: 'lounge', catLabel: 'The Lounge', title: 'Starkid Bright — Senior Barber', detail: 'Senior chair · Suite K-5, 4th floor', serviceId: null },
 ];
 
 /* How it works — Hickson 4-step flow, barber edition */
 export const PROCESS = [
   { title: 'Pick Your Rituals', text: 'Browse the 25-service menu and select one or many. Your price and total chair time add up live — no surprises at the counter.' },
-  { title: 'Choose Your Barber', text: 'Request Starkid, Cossy, Alphie, Mike or Dan — or take the next available chair and let the lounge match you.' },
+  { title: 'Choose Your Barber', text: 'Request Starkid, Cossy, Alphie or Mike — or take the next available chair and let the lounge match you.' },
   { title: 'Day & Time', text: 'Walk-ins welcome Mon–Sat, 8:00 am – 8:00 pm (Thu from 8:30 am) — no reservation needed. Sunday: By Appointment Only! Premium Rates Apply. Please book a day ahead.' },
   { title: 'Confirm & Sit Down', text: 'Your request opens pre-filled on WhatsApp 0741578791. We confirm, the towel warms, coffee is poured — take the chair.' },
 ];
