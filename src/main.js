@@ -12,17 +12,22 @@ import {
   HOURS,
   REFRESHMENTS,
   SOCIALS,
+  GALLERY_FILTERS,
+  GALLERY,
+  PROCESS,
+  PILLARS,
+  REVIEW_SUMMARY,
+  REVIEWS,
+  FAQS,
+  AUDIENCES,
   money,
   durationLabel,
 } from './data.js';
 
-/* ══════════════════════════════════════════════════════════
-   Tiny helpers
-   ══════════════════════════════════════════════════════════ */
+/* ═══════════ Helpers ═══════════ */
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const svg = (id) => `<svg class="ic" aria-hidden="true"><use href="#${id}"></use></svg>`;
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const state = {
@@ -31,68 +36,60 @@ const state = {
   category: 'all',
   query: '',
   sort: 'menu',
-  drawerCategory: 'all',
-  drawerQuery: '',
-  step: 1,
+  galleryFilter: 'all',
+  dates: [],
   dateIndex: 0,
   time: null,
-  dates: [],
 };
 
-const booking = {
-  name: '',
-  phone: '',
-  notes: '',
-};
+function toast(message, icon = 'i-check') {
+  const stack = $('#toastStack');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `${svg(icon)}<span>${message}</span>`;
+  stack.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('is-out');
+    setTimeout(() => el.remove(), 450);
+  }, 3200);
+}
 
-/* ══════════════════════════════════════════════════════════
-   1 · Loading screen
-   ══════════════════════════════════════════════════════════ */
+function gotoBooking(focus = true) {
+  $('#reserve').scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
+  if (focus) setTimeout(() => $('#bookName')?.focus({ preventScroll: true }), 650);
+}
+
+/* ═══════════ 1 · Loader ═══════════ */
 function runLoader() {
   const loader = $('#loader');
-  const starWrap = $('#loaderStars');
-  const rated = $('.loader__rated');
+  const starsWrap = $('#loaderStars');
   const bar = $('#loaderBar');
-
-  starWrap.innerHTML = Array.from({ length: 5 })
+  const rated = $('.loader__rated');
+  starsWrap.innerHTML = Array.from({ length: 5 })
     .map(() => `<svg aria-hidden="true"><use href="#i-star"/></svg>`)
     .join('');
-  const stars = $$('svg', starWrap);
+  const stars = $$('svg', starsWrap);
 
-  let progress = 0;
-  let done = false;
+  let seen = false;
+  try { seen = sessionStorage.getItem('fs-visited') === '1'; sessionStorage.setItem('fs-visited', '1'); } catch { /* private mode */ }
+  const minTime = prefersReduced ? 350 : seen ? 800 : 1900;
+  const started = performance.now();
 
   const tick = () => {
-    progress = Math.min(100, progress + Math.random() * 13 + 5);
-    bar.style.width = `${progress}%`;
-    if (progress < 100) requestAnimationFrame(tick);
+    const p = Math.min(100, ((performance.now() - started) / minTime) * 100);
+    bar.style.width = `${p}%`;
+    if (p < 100) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
 
-  let seen = false;
-  try {
-    seen = sessionStorage.getItem('fs-visited') === '1';
-  } catch {
-    seen = false;
-  }
-  try {
-    sessionStorage.setItem('fs-visited', '1');
-  } catch {
-    /* private mode — ignore */
-  }
-  const minTime = prefersReduced ? 400 : seen ? 850 : 2350;
-  const starStep = Math.max(70, Math.min(240, (minTime - 520) / 5));
-
   stars.forEach((star, i) => {
-    setTimeout(
-      () => {
-        star.classList.add('on');
-        if (i === 4) rated.classList.add('on');
-      },
-      Math.min(380, minTime * 0.16) + i * starStep
-    );
+    setTimeout(() => {
+      star.classList.add('on');
+      if (i === 4) rated.classList.add('on');
+    }, Math.min(300, minTime * 0.15) + i * Math.max(60, Math.min(220, (minTime - 450) / 5)));
   });
 
+  let done = false;
   const finish = () => {
     if (done) return;
     done = true;
@@ -100,763 +97,582 @@ function runLoader() {
     setTimeout(() => {
       loader.classList.add('is-done');
       document.body.classList.remove('is-loading');
-      document.body.classList.add('is-ready');
       initReveal();
-      setTimeout(() => loader.remove(), 900);
-    }, 260);
+      setTimeout(() => loader.remove(), 800);
+    }, 220);
   };
-
-  const started = performance.now();
-  const wait = () => {
-    if (performance.now() - started < minTime) {
-      setTimeout(wait, 60);
-    } else {
-      finish();
-    }
-  };
+  const wait = () => (performance.now() - started < minTime ? setTimeout(wait, 60) : finish());
   if (document.readyState === 'complete') wait();
   else window.addEventListener('load', wait, { once: true });
-  // Hard safety net
-  setTimeout(finish, 6000);
+  setTimeout(finish, 5500);
 }
 
-/* ══════════════════════════════════════════════════════════
-   2 · Theme
-   ══════════════════════════════════════════════════════════ */
-const THEME_KEY = 'fs-theme';
-
-function applyTheme(theme, persist = true) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const icon = $('#themeIcon use');
-  if (icon) icon.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
-  const btn = $('#themeToggle');
-  if (btn) {
-    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-    btn.title = theme === 'dark' ? 'Light mode' : 'Dark mode';
-  }
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B0B0B' : '#F4EEE2');
-  if (persist) localStorage.setItem(THEME_KEY, theme);
+/* ═══════════ 2 · Theme ═══════════ */
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const icon = $('#themeIcon');
+  icon.innerHTML = `<use href="#${theme === 'dark' ? 'i-sun' : 'i-moon'}"/>`;
+  $('#themeToggle').setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  try { localStorage.setItem('fs-theme', theme); } catch { /* ignore */ }
 }
-
 function initTheme() {
-  const stored = localStorage.getItem(THEME_KEY);
-  applyTheme(stored || 'dark', false);
+  let saved = 'dark';
+  try { saved = localStorage.getItem('fs-theme') || 'dark'; } catch { /* ignore */ }
+  setTheme(saved === 'light' ? 'light' : 'dark');
   $('#themeToggle').addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
 }
 
-/* ══════════════════════════════════════════════════════════
-   3 · Tabs
-   ══════════════════════════════════════════════════════════ */
-function switchTab(tab, { scroll = true } = {}) {
-  const tabsEl = $('.tabs');
-  $$('.tabs__btn').forEach((btn) => {
-    const on = btn.dataset.tab === tab;
-    btn.classList.toggle('is-active', on);
-    btn.setAttribute('aria-selected', String(on));
+/* ═══════════ 3 · Reveal & counters ═══════════ */
+function initReveal() {
+  const io = new IntersectionObserver(
+    (entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+    }),
+    { threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
+  );
+  $$('.reveal').forEach((el) => {
+    const d = el.dataset.delay;
+    if (d) el.style.transitionDelay = `${d}ms`;
+    io.observe(el);
   });
-  tabsEl.dataset.active = tab;
-  $$('.tab-panel').forEach((panel) => {
-    const on = panel.id === `panel-${tab}`;
-    panel.classList.toggle('is-active', on);
-    panel.hidden = !on;
-  });
-  if (scroll) {
-    window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
+
+  const bars = $('#ratingBars');
+  if (bars) {
+    const bio = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) { bars.classList.add('is-in'); bio.disconnect(); }
+    }), { threshold: 0.35 });
+    bio.observe(bars);
   }
-  revealInView();
-  requestAnimationFrame(updateStatus);
+
+  const cio = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    animateCount(e.target);
+    cio.unobserve(e.target);
+  }), { threshold: 0.5 });
+  $$('[data-count]').forEach((el) => cio.observe(el));
 }
 
-function initTabs() {
-  $$('.tabs__btn').forEach((btn) =>
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab))
-  );
-  $$('[data-tab-jump]').forEach((el) =>
-    el.addEventListener('click', () => switchTab(el.dataset.tabJump))
-  );
-  document.querySelectorAll('a[href="#menu"]').forEach((a) =>
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      $('#menu')?.scrollIntoView?.({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
-    })
-  );
+function animateCount(el) {
+  const target = Number(el.dataset.count);
+  const decimals = Number(el.dataset.decimal || 0);
+  if (prefersReduced) { el.textContent = target.toFixed(decimals); return; }
+  const dur = 1400;
+  const start = performance.now();
+  const step = (t) => {
+    const p = Math.min(1, (t - start) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = (target * eased).toLocaleString('en-KE', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
-/* ══════════════════════════════════════════════════════════
-   4 · Nairobi time & live opening status
-   ══════════════════════════════════════════════════════════ */
+/* ═══════════ 4 · Nairobi time & live status ═══════════ */
 const WEEKDAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 function nairobiNow() {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: BUSINESS.timezone,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    timeZone: BUSINESS.timezone, weekday: 'short', hour: '2-digit', minute: '2-digit',
+    hour12: false, year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(new Date());
   const get = (t) => parts.find((p) => p.type === t)?.value ?? '';
   const day = WEEKDAY_INDEX[get('weekday')] ?? new Date().getDay();
   let hour = parseInt(get('hour'), 10);
   if (hour === 24) hour = 0;
-  return {
-    day,
-    hour,
-    minute: parseInt(get('minute'), 10),
-    minutes: hour * 60 + parseInt(get('minute'), 10),
-    ymd: `${get('year')}-${get('month')}-${get('day')}`,
-  };
+  const minute = parseInt(get('minute'), 10);
+  return { day, hour, minute, minutes: hour * 60 + minute, ymd: `${get('year')}-${get('month')}-${get('day')}` };
 }
 
-function hoursForDay(day) {
-  return HOURS.find((h) => h.day === day) ?? HOURS[0];
-}
+const hoursForDay = (day) => HOURS.find((h) => h.day === day) ?? HOURS[0];
 
 function openStatus() {
   const now = nairobiNow();
   const today = hoursForDay(now.day);
-  if (today.appointment) {
-    return {
-      open: false,
-      label: 'By appointment',
-      detail: 'Sunday · appointments only',
-      today,
-      now,
-    };
-  }
-  if (now.minutes < today.openMin) {
-    return {
-      open: false,
-      label: 'Closed',
-      detail: `Opens today at ${today.open}`,
-      today,
-      now,
-    };
-  }
+  if (today.appointment) return { open: false, appt: true, label: 'By appointment today', detail: 'Sunday · appointments only', today };
+  if (now.minutes < today.openMin) return { open: false, label: `Closed · opens ${today.open}`, detail: `Opens today at ${today.open}`, today };
   if (now.minutes >= today.closeMin) {
     const tomorrow = hoursForDay((now.day + 1) % 7);
-    return {
-      open: false,
-      label: 'Closed',
-      detail: tomorrow.appointment
-        ? 'Closed · Sunday by appointment'
-        : `Closes 8:00 pm · Opens ${tomorrow.open} tomorrow`,
-      today,
-      now,
-    };
+    return { open: false, label: 'Closed', detail: tomorrow.appointment ? 'Tomorrow is Sunday · by appointment' : `Opens ${tomorrow.open} tomorrow`, today };
   }
-  return { open: true, label: 'Open now', detail: 'Closes 8:00 pm', today, now };
+  return { open: true, label: 'Open now · closes 8:00 pm', detail: 'Closes 8:00 pm', today };
 }
 
 function updateStatus() {
-  const status = openStatus();
+  const s = openStatus();
   $$('[data-status-badge]').forEach((badge) => {
-    badge.classList.toggle('is-closed', !status.open);
+    badge.classList.toggle('is-closed', !s.open && !s.appt);
+    badge.classList.toggle('is-appt', !!s.appt);
     const txt = $('[data-status-text]', badge);
-    if (txt) txt.textContent = status.label;
+    if (txt) txt.textContent = s.label;
   });
-  $$('[data-status-line]').forEach((line) => {
-    line.textContent = `${status.label} · ${status.detail}`;
-  });
+  $$('[data-status-line]').forEach((l) => { l.textContent = `${s.label} · ${s.detail}`; });
   $$('[data-today-hours]').forEach((el) => {
-    el.textContent = status.today.appointment
-      ? 'By appointment only'
-      : `${status.today.open} – ${status.today.close}`;
-  });
-  highlightToday();
-}
-
-function highlightToday() {
-  const { day } = nairobiNow();
-  $$('.hours__row').forEach((row) => {
-    row.classList.toggle('is-today', Number(row.dataset.day) === day);
+    el.textContent = s.today.appointment ? 'Today: by appointment only' : `Today: ${s.today.open} – ${s.today.close}`;
   });
 }
 
 function initHours() {
   const wrap = $('#hoursTable');
-  wrap.innerHTML = HOURS.map(
-    (h) => `
-    <div class="hours__row" data-day="${h.day}">
-      <span class="hours__day">${h.label}</span>
-      ${h.appointment
-        ? `<span class="hours__appt">${h.open}</span>`
-        : `<span class="hours__time">${h.open} – ${h.close}</span>`}
-      <span class="hours__badge" data-today-badge hidden>TODAY</span>
-    </div>`
-  ).join('');
-
   const { day } = nairobiNow();
-  $$('.hours__row').forEach((row) => {
-    const isToday = Number(row.dataset.day) === day;
-    row.classList.toggle('is-today', isToday);
-    const badge = $('[data-today-badge]', row);
-    if (badge && isToday) badge.hidden = false;
-    else if (badge) badge.remove();
-  });
-
+  wrap.innerHTML = HOURS.map((h) => `
+    <div class="hour-row ${h.day === day ? 'is-today' : ''}">
+      <span class="hour-row__day">${h.label}${h.day === day ? '<span class="hour-row__today">TODAY</span>' : ''}</span>
+      <span class="hour-row__time">${h.appointment ? h.open : `${h.open} – ${h.close}`}</span>
+    </div>`).join('');
   updateStatus();
   setInterval(updateStatus, 60_000);
 }
 
-/* ══════════════════════════════════════════════════════════
-   5 · Render barbers
-   ══════════════════════════════════════════════════════════ */
-function barberCard(b, i) {
-  const media = b.img
-    ? `<img src="${b.img}" alt="${b.name}, ${b.role} at Fresh Start Grooming Lounge" loading="lazy" />`
-    : `<img src="/logo.png" alt="" aria-hidden="true" />`;
-  return `
-    <button class="barber ${b.id === 'any' ? 'barber--any' : ''} ${state.barberId === b.id ? 'is-selected' : ''}"
-      data-barber="${b.id}" type="button" aria-pressed="${state.barberId === b.id}"
-      aria-label="Select ${b.name}">
-      <div class="barber__media">
-        ${media}
-        <span class="barber__check">${svg('i-check')}</span>
-        ${b.years ? `<span class="barber__years">${b.years} yrs</span>` : ''}
-      </div>
-      <div class="barber__body">
-        <span class="barber__name">${b.name}</span>
-        <span class="barber__role">${b.role}</span>
-        <p class="barber__note">${b.note}</p>
-        <div class="barber__specs">${b.specialties.map((s) => `<span>${s}</span>`).join('')}</div>
-      </div>
-    </button>`;
+/* ═══════════ 5 · Header: ticker, scroll, nav pill, mobile menu ═══════════ */
+const TICKER = [
+  'Bring 2 friends — your haircut is FREE',
+  'Free coffee, tea, light bites & aftershave massage with every service',
+  'Students: “Shave Na Mbogi” group of 3 — KSh 2,000 with valid ID',
+  'Walk-ins welcome Mon–Sat · 8:00 am – 8:00 pm',
+  'Sundays by appointment — book a day ahead on 0741578791',
+  'Rated 5.0 ★★★★★ on Google',
+];
+
+function initTicker() {
+  const el = $('#topTicker');
+  let i = 0;
+  setInterval(() => {
+    el.classList.add('is-out');
+    setTimeout(() => {
+      i = (i + 1) % TICKER.length;
+      el.textContent = TICKER[i];
+      el.classList.remove('is-out');
+    }, 460);
+  }, 4200);
 }
 
+function initHeader() {
+  const header = $('#siteHeader');
+  const bar = $('#scrollBar');
+  const toTop = $('#toTop');
+  const onScroll = () => {
+    const y = window.scrollY;
+    header.classList.toggle('is-scrolled', y > 24);
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = `${max > 0 ? (y / max) * 100 : 0}%`;
+    toTop.classList.toggle('is-show', y > 700);
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  const menuBtn = $('#menuBtn');
+  const menu = $('#mobileMenu');
+  const setMenu = (open) => {
+    menu.hidden = !open;
+    menuBtn.setAttribute('aria-expanded', String(open));
+    menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    menuBtn.innerHTML = svg(open ? 'i-close' : 'i-menu');
+  };
+  menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+  $$('a', menu).forEach((a) => a.addEventListener('click', () => setMenu(false)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) setMenu(false); });
+
+  // Sliding gold nav pill + scrollspy
+  const links = $$('#mainNav a[data-nav]');
+  const pill = $('#navPill');
+  const movePill = (link) => {
+    if (!link) { pill.style.opacity = '0'; return; }
+    pill.style.left = `${link.offsetLeft}px`;
+    pill.style.width = `${link.offsetWidth}px`;
+    pill.style.opacity = '1';
+  };
+  const setActive = (id) => {
+    links.forEach((l) => l.classList.toggle('is-active', l.dataset.nav === id));
+    movePill(links.find((l) => l.dataset.nav === id));
+  };
+  const spy = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) setActive(e.target.id);
+  }), { rootMargin: '-42% 0px -52% 0px' });
+  links.forEach((l) => {
+    const sec = document.getElementById(l.dataset.nav);
+    if (sec) spy.observe(sec);
+    l.addEventListener('click', () => setActive(l.dataset.nav));
+  });
+  window.addEventListener('resize', () => movePill($('#mainNav a.is-active')));
+
+  toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' }));
+  $('#footerTop')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' }));
+
+  $$('[data-goto-booking]').forEach((b) => b.addEventListener('click', () => gotoBooking()));
+  $$('[data-book-service]').forEach((b) => b.addEventListener('click', () => {
+    selectService(b.dataset.bookService, true);
+    gotoBooking();
+  }));
+  $$('[data-pick-barber]').forEach((b) => b.addEventListener('click', () => selectBarber(b.dataset.pickBarber, true)));
+}
+
+/* ═══════════ 6 · Barbers rail ═══════════ */
 function renderBarbers() {
-  const grid = $('#barberGrid');
-  grid.innerHTML = BARBERS.map(barberCard).join('');
-  grid.querySelectorAll('.barber').forEach((card) => {
-    card.addEventListener('click', () => selectBarber(card.dataset.barber, { from: 'grid' }));
-  });
-}
-
-function renderDrawerBarbers() {
-  const wrap = $('#drawerBarbers');
-  wrap.innerHTML = BARBERS.map(
-    (b) => `
-    <button class="dbarber ${state.barberId === b.id ? 'is-selected' : ''}" data-barber="${b.id}" type="button" aria-pressed="${state.barberId === b.id}">
-      <span class="dbarber__av">${b.img ? `<img src="${b.img}" alt="" loading="lazy" />` : b.initials}</span>
-      <span class="dbarber__main">
-        <span class="dbarber__name">${b.name}</span>
-        <span class="dbarber__role">${b.role}${b.years ? ` · ${b.years} yrs` : ''}</span>
+  const wrap = $('#barberGrid');
+  wrap.innerHTML = BARBERS.map((b) => `
+    <button class="barber-card ${state.barberId === b.id ? 'is-selected' : ''}" type="button"
+      data-barber="${b.id}" aria-pressed="${state.barberId === b.id}" aria-label="Select ${b.name}">
+      ${b.img
+        ? `<img class="barber-card__img" src="${b.img}" alt="${b.name}, ${b.role} at Fresh Start Grooming Lounge" loading="lazy" />`
+        : `<span class="barber-card__avatar" aria-hidden="true">${b.initials}</span>`}
+      <span class="barber-card__seal">${svg('i-check')}</span>
+      <span class="barber-card__body">
+        <span class="barber-card__role">${b.role}${b.years ? ` · ${b.years} yrs` : ''}</span>
+        <span class="barber-card__name">${b.name}</span>
+        <span class="barber-card__note">${b.note}</span>
+        <span class="barber-card__specs">${b.specialties.map((s) => `<span class="spec">${s}</span>`).join('')}</span>
+        <span class="barber-card__foot"><span>${b.id === 'any' ? 'Next open chair' : 'Reserve this chair'}</span>${svg('i-arrow')}</span>
       </span>
-      <span class="dbarber__tick">${svg('i-check')}</span>
-    </button>`
-  ).join('');
-  wrap.querySelectorAll('.dbarber').forEach((btn) => {
-    btn.addEventListener('click', () => selectBarber(btn.dataset.barber, { from: 'drawer' }));
-  });
+    </button>`).join('');
+  $$('.barber-card', wrap).forEach((card) =>
+    card.addEventListener('click', () => selectBarber(card.dataset.barber, true))
+  );
 }
 
-function selectBarber(id, { from } = {}) {
+function selectBarber(id, announce = false) {
   state.barberId = id;
-  const barber = BARBERS.find((b) => b.id === id);
-  if (from !== 'drawer') {
-    $$('#barberGrid .barber').forEach((card) => {
-      const on = card.dataset.barber === id;
-      card.classList.toggle('is-selected', on);
-      card.setAttribute('aria-pressed', String(on));
-    });
-  }
-  $$('#drawerBarbers .dbarber').forEach((card) => {
-    const on = card.dataset.barber === id;
-    card.classList.toggle('is-selected', on);
-    card.setAttribute('aria-pressed', String(on));
+  $$('.barber-card').forEach((c) => {
+    const on = c.dataset.barber === id;
+    c.classList.toggle('is-selected', on);
+    c.setAttribute('aria-pressed', String(on));
   });
-  if (from !== 'grid') toast(`${barber.name} selected`, 'i-scissors');
+  const sel = $('#bookBarber');
+  if (sel) sel.value = id;
   renderSummary();
+  if (announce) {
+    const b = chosenBarber();
+    toast(id === 'any' ? 'Next available chair selected' : `${b.name} will hold the clippers`, 'i-scissors');
+  }
+}
+const chosenBarber = () => BARBERS.find((b) => b.id === state.barberId) ?? BARBERS[0];
+
+function initBarberRailNav() {
+  const rail = $('#barberGrid');
+  $('#barberPrev').addEventListener('click', () => rail.scrollBy({ left: -320, behavior: 'smooth' }));
+  $('#barberNext').addEventListener('click', () => rail.scrollBy({ left: 320, behavior: 'smooth' }));
 }
 
-/* ══════════════════════════════════════════════════════════
-   6 · Menu rendering, search, filter, sort
-   ══════════════════════════════════════════════════════════ */
-function categoryCounts() {
-  const counts = { all: SERVICES.length };
-  SERVICES.forEach((s) => {
-    counts[s.cat] = (counts[s.cat] || 0) + 1;
-  });
-  return counts;
-}
+/* ═══════════ 7 · Services menu ═══════════ */
+const selectedServices = () => SERVICES.filter((s) => state.serviceIds.has(s.id));
+const totals = () => selectedServices().reduce(
+  (acc, s) => ({ price: acc.price + s.price, mins: acc.mins + s.mins }),
+  { price: 0, mins: 0 }
+);
 
 function renderChips() {
-  const counts = categoryCounts();
-  const wrap = $('#categoryChips');
-  wrap.innerHTML = CATEGORIES.map(
-    (c) => `
-    <button class="chip ${state.category === c.id ? 'is-active' : ''}" data-cat="${c.id}" type="button" role="tab" aria-selected="${state.category === c.id}">
-      ${c.label} <b>${counts[c.id] ?? 0}</b>
-    </button>`
-  ).join('');
-  wrap.querySelectorAll('.chip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      state.category = chip.dataset.cat;
-      renderChips();
-      renderServices();
-      const active = $(`.chip[data-cat="${state.category}"]`);
-      active?.scrollIntoView?.({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    })
-  );
+  $('#categoryChips').innerHTML = CATEGORIES.map((c) => {
+    const count = c.id === 'all' ? SERVICES.length : SERVICES.filter((s) => s.cat === c.id).length;
+    return `<button class="chip ${state.category === c.id ? 'is-active' : ''}" type="button" role="tab"
+      aria-selected="${state.category === c.id}" data-cat="${c.id}">${c.label}<small>${count}</small></button>`;
+  }).join('');
+  $$('#categoryChips .chip').forEach((chip) => chip.addEventListener('click', () => {
+    state.category = chip.dataset.cat;
+    renderChips();
+    renderServices();
+  }));
 }
 
-function matchesQuery(service, query) {
-  if (!query) return true;
-  const haystack = `${service.name} ${service.desc} ${service.tags} ${CATEGORY_LABEL[service.cat]}`.toLowerCase();
-  return query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((term) => haystack.includes(term));
-}
-
-function visibleServices({ category = state.category, query = state.query, sort = state.sort } = {}) {
-  let list = SERVICES.filter(
-    (s) => (category === 'all' || s.cat === category) && matchesQuery(s, query.trim())
-  );
-  if (sort === 'price-asc') list = [...list].sort((a, b) => a.price - b.price);
-  if (sort === 'price-desc') list = [...list].sort((a, b) => b.price - a.price);
-  if (sort === 'duration-asc') list = [...list].sort((a, b) => a.mins - b.mins);
-  return list;
-}
-
-function serviceCard(s, index) {
-  const selected = state.serviceIds.has(s.id);
-  return `
-    <article class="svc ${selected ? 'is-selected' : ''} ${s.vip ? 'is-vip' : ''}" data-id="${s.id}" style="animation-delay:${Math.min(index * 24, 320)}ms">
-      <span class="svc__check">${svg('i-check')}</span>
-      <div class="svc__top">
-        <span class="svc__cat"><i></i>${CATEGORY_LABEL[s.cat]}</span>
-        <span class="svc__badges">
-          ${s.vip ? `<span class="svc__vip">${svg('i-crown')} VIP</span>` : ''}
-          ${s.badge ? `<span class="svc__badge">${s.badge}</span>` : ''}
-        </span>
-      </div>
-      <h3 class="svc__name">${s.name}</h3>
-      <p class="svc__desc">${s.desc}</p>
-      <div class="svc__foot">
-        <div class="svc__price">
-          <strong>${money(s.price)}</strong>
-          <span class="svc__pill">${svg('i-clock')} ${durationLabel(s.mins)}</span>
-        </div>
-        <button class="svc__add" data-toggle="${s.id}" type="button" aria-pressed="${selected}">
-          ${selected ? 'Selected' : '+ Select service'}
-        </button>
-      </div>
-    </article>`;
+function visibleServices() {
+  let list = SERVICES.filter((s) => state.category === 'all' || s.cat === state.category);
+  const q = state.query.trim().toLowerCase();
+  if (q) list = list.filter((s) => `${s.name} ${s.desc} ${s.tags} ${CATEGORY_LABEL[s.cat]}`.toLowerCase().includes(q));
+  const sorted = [...list];
+  if (state.sort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
+  if (state.sort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
+  if (state.sort === 'duration-asc') sorted.sort((a, b) => a.mins - b.mins);
+  return sorted;
 }
 
 function renderServices() {
   const grid = $('#serviceGrid');
   const list = visibleServices();
-  const empty = $('#emptyState');
-  grid.innerHTML = list.map(serviceCard).join('');
-  empty.hidden = list.length > 0;
-  $('#menuTotalCount').textContent = list.length;
-
-  grid.querySelectorAll('.svc').forEach((card) => {
-    card.addEventListener('mousemove', (e) => {
-      if (e.pointerType === 'touch') return;
-      const rect = card.getBoundingClientRect();
-      card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
-      card.style.setProperty('--my', `${e.clientY - rect.top}px`);
-    });
-    const btn = $('.svc__add', card);
-    btn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleService(card.dataset.id);
-    });
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
-      toggleService(card.dataset.id);
-    });
-  });
+  $('#menuTotalCount').textContent = String(list.length);
+  $('#emptyState').hidden = list.length > 0;
+  grid.innerHTML = list.map((s, i) => {
+    const on = state.serviceIds.has(s.id);
+    return `
+    <article class="svc ${s.vip ? 'is-vip' : ''} ${on ? 'is-selected' : ''}" style="animation-delay:${Math.min(i * 35, 420)}ms">
+      <div class="svc__top">
+        <span class="svc__cat">${s.vip ? '★ VIP Collection' : CATEGORY_LABEL[s.cat]}</span>
+        ${s.badge ? `<span class="svc__badge">${s.badge}</span>` : ''}
+      </div>
+      <h3>${s.name}</h3>
+      <p>${s.desc}</p>
+      <span class="svc__meta">${svg('i-clock')} ${durationLabel(s.mins)}</span>
+      <div class="svc__foot">
+        <span class="svc__price">${money(s.price)}</span>
+        <button class="svc__btn" type="button" data-service="${s.id}" aria-pressed="${on}">
+          ${on ? `${svg('i-check')} Selected` : `${svg('i-plus')} Select`}
+        </button>
+      </div>
+    </article>`;
+  }).join('');
+  $$('.svc__btn', grid).forEach((btn) =>
+    btn.addEventListener('click', () => selectService(btn.dataset.service))
+  );
 }
 
-function initMenuTools() {
-  const input = $('#serviceSearch');
-  let debounce;
-  input.addEventListener('input', () => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      state.query = input.value;
-      renderServices();
-    }, 130);
-  });
-  $('#serviceSort').addEventListener('change', (e) => {
-    state.sort = e.target.value;
-    renderServices();
-  });
-  $('#clearFilters').addEventListener('click', () => {
-    state.query = '';
-    state.category = 'all';
-    input.value = '';
-    $('#serviceSort').value = 'menu';
-    state.sort = 'menu';
-    renderChips();
-    renderServices();
-  });
-}
-
-/* ══════════════════════════════════════════════════════════
-   7 · Selection
-   ══════════════════════════════════════════════════════════ */
-function selectedServices() {
-  return SERVICES.filter((s) => state.serviceIds.has(s.id));
-}
-
-function totals() {
-  const list = selectedServices();
-  return {
-    count: list.length,
-    price: list.reduce((sum, s) => sum + s.price, 0),
-    mins: list.reduce((sum, s) => sum + s.mins, 0),
-  };
-}
-
-function toggleService(id) {
-  const service = SERVICES.find((s) => s.id === id);
-  if (!service) return;
-  if (state.serviceIds.has(id)) {
+function selectService(id, forceAdd = false) {
+  if (!id || !SERVICES.some((s) => s.id === id)) return;
+  if (state.serviceIds.has(id) && !forceAdd) {
     state.serviceIds.delete(id);
-    toast(`Removed ${service.name}`, 'i-minus');
   } else {
     state.serviceIds.add(id);
-    toast(`Added ${service.name}`, 'i-check');
+    const s = SERVICES.find((x) => x.id === id);
+    const main = $('#bookService');
+    if (main) main.value = id;
+    toast(`${s.name} added · ${money(s.price)}`, 'i-sparkle');
   }
-  syncSelectionUI();
+  renderServices();
+  updateSelectionUI();
 }
 
-function syncSelectionUI() {
+function updateSelectionUI() {
   const t = totals();
-
-  $$('#serviceGrid .svc').forEach((card) => {
-    const on = state.serviceIds.has(card.dataset.id);
-    card.classList.toggle('is-selected', on);
-    const btn = $('.svc__add', card);
-    if (btn) {
-      btn.textContent = on ? 'Selected' : '+ Select service';
-      btn.setAttribute('aria-pressed', String(on));
-    }
-  });
-
-  $$('#drawerServices .dsvc').forEach((row) => {
-    const on = state.serviceIds.has(row.dataset.id);
-    row.classList.toggle('is-selected', on);
-    row.setAttribute('aria-pressed', String(on));
-  });
-
+  const n = state.serviceIds.size;
   const bar = $('#selectBar');
-  if (t.count > 0) {
-    bar.hidden = false;
-    requestAnimationFrame(() => bar.classList.add('is-visible'));
-  } else {
-    bar.classList.remove('is-visible');
-    setTimeout(() => {
-      if (totals().count === 0) bar.hidden = true;
-    }, 420);
-  }
-  $('#selCount').textContent = t.count;
+  bar.hidden = n === 0;
+  $('#selCount').textContent = String(n);
   $('#selTotal').textContent = money(t.price);
   $('#selTime').textContent = durationLabel(t.mins);
-
-  $('#dCount').textContent = `${t.count} service${t.count === 1 ? '' : 's'}`;
-  $('#dTime').textContent = durationLabel(t.mins);
-  $('#dTotal').textContent = money(t.price);
-
   renderSummary();
-  updateStepNav();
 }
 
-function initSelectionBar() {
+function initServices() {
+  renderChips();
+  renderServices();
+  let debounce;
+  $('#serviceSearch').addEventListener('input', (e) => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => { state.query = e.target.value; renderServices(); }, 140);
+  });
+  $('#serviceSort').addEventListener('change', (e) => { state.sort = e.target.value; renderServices(); });
+  $('#clearFilters').addEventListener('click', () => {
+    state.category = 'all'; state.query = ''; state.sort = 'menu';
+    $('#serviceSearch').value = ''; $('#serviceSort').value = 'menu';
+    renderChips(); renderServices();
+  });
   $('#selClear').addEventListener('click', () => {
     state.serviceIds.clear();
-    syncSelectionUI();
-    toast('Selection cleared', 'i-close');
+    const main = $('#bookService'); if (main) main.value = '';
+    renderServices(); updateSelectionUI();
   });
-}
-
-/* ══════════════════════════════════════════════════════════
-   8 · Refreshments, socials, footer
-   ══════════════════════════════════════════════════════════ */
-function renderRefreshments() {
-  $('#refreshMenu').innerHTML = REFRESHMENTS.map(
-    (r) => `
-    <li class="r-item">
-      <div class="r-item__main">
-        <span class="r-item__name">${r.name}</span>
-        <span class="r-item__detail">${r.detail}</span>
-      </div>
-      <span class="r-item__dots" aria-hidden="true"></span>
-      <div class="r-item__price">
-        <s>${money(r.price)}</s>
-        <b>Complimentary</b>
-      </div>
-    </li>`
-  ).join('');
-}
-
-function renderSocials() {
-  $('#socialGrid').innerHTML = SOCIALS.map(
-    (s) => `
-    <a class="social-card" href="${s.href}" target="_blank" rel="noopener" aria-label="${s.label} — ${s.handle}">
-      <span class="social-card__ic">${svg(s.icon)}</span>
-      <strong>${s.label}</strong>
-      <span class="social-card__handle">${s.handle}</span>
-      <span class="social-card__note">${s.note}</span>
-    </a>`
-  ).join('');
-}
-
-/* ══════════════════════════════════════════════════════════
-   9 · Booking drawer
-   ══════════════════════════════════════════════════════════ */
-let lastFocused = null;
-
-function openDrawer(step = 1) {
-  lastFocused = document.activeElement;
-  const drawer = $('#bookingDrawer');
-  const scrim = $('#drawerScrim');
-  scrim.hidden = false;
-  drawer.hidden = false;
-  document.body.classList.add('no-scroll');
-  requestAnimationFrame(() => {
-    scrim.classList.add('is-open');
-    drawer.classList.add('is-open');
+  $('#claimOffer').addEventListener('click', () => {
+    selectService('freefriend', true);
+    toast('Group of 3 claimed — your cut is FREE', 'i-crown');
+    gotoBooking();
   });
-  goToStep(step, { silent: true });
-  setTimeout(() => $('#drawerClose')?.focus(), 380);
-}
-
-function closeDrawer() {
-  const drawer = $('#bookingDrawer');
-  const scrim = $('#drawerScrim');
-  drawer.classList.remove('is-open');
-  scrim.classList.remove('is-open');
-  document.body.classList.remove('no-scroll');
-  setTimeout(() => {
-    drawer.hidden = true;
-    scrim.hidden = true;
-  }, 480);
-  lastFocused?.focus?.();
-}
-
-function goToStep(step, { silent = false } = {}) {
-  if (step === 3 && state.serviceIds.size === 0) {
-    toast('Select at least one service first', 'i-bell');
-    return;
-  }
-  state.step = clamp(step, 1, 4);
-  $$('.dstep').forEach((s) => s.classList.toggle('is-active', Number(s.dataset.step) === state.step));
-  $$('.drawer__step').forEach((s) => {
-    const n = Number(s.dataset.stepDot);
-    s.classList.toggle('is-active', n === state.step);
-    s.classList.toggle('is-done', n < state.step);
-  });
-  $('#drawerBody').scrollTop = 0;
-  if (state.step === 4) renderSummary();
-  updateStepNav();
-  if (!silent) updateStepNav();
-  if (state.step === 3) renderDates();
-}
-
-function updateStepNav() {
-  const back = $('#stepBack');
-  const next = $('#stepNext');
-  back.hidden = state.step === 1;
-  if (state.step === 4) {
-    next.hidden = true;
-    return;
-  }
-  next.hidden = false;
-  next.innerHTML =
-    state.step === 3
-      ? `Review <svg class="ic"><use href="#i-arrow"></use></svg>`
-      : `Continue <svg class="ic"><use href="#i-arrow"></use></svg>`;
-  next.disabled = false;
-  next.style.opacity = state.step === 1 && state.serviceIds.size === 0 ? '0.55' : '';
-}
-
-function nextStep() {
-  if (state.step === 1) {
-    if (state.serviceIds.size === 0) {
-      toast('Pick at least one grooming ritual', 'i-bell');
-      return;
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      $('#serviceSearch').focus();
+      $('#services').scrollIntoView({ behavior: 'smooth' });
     }
-    goToStep(2);
-    return;
-  }
-  if (state.step === 2) {
-    goToStep(3);
-    return;
-  }
-  if (state.step === 3) {
-    if (!state.time) {
-      toast('Choose a time slot for your chair', 'i-clock');
-      return;
-    }
-    goToStep(4);
-  }
-}
-
-/* drawer service list */
-function renderDrawerChips() {
-  const counts = categoryCounts();
-  const wrap = $('#drawerChips');
-  wrap.innerHTML = CATEGORIES.map(
-    (c) => `<button class="chip ${state.drawerCategory === c.id ? 'is-active' : ''}" data-dcat="${c.id}" type="button">${c.label} <b>${counts[c.id] ?? 0}</b></button>`
-  ).join('');
-  wrap.querySelectorAll('.chip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      state.drawerCategory = chip.dataset.dcat;
-      renderDrawerChips();
-      renderDrawerServices();
-    })
-  );
-}
-
-function renderDrawerServices() {
-  const list = visibleServices({
-    category: state.drawerCategory,
-    query: state.drawerQuery,
-    sort: state.sort,
   });
-  const wrap = $('#drawerServices');
-  if (!list.length) {
-    wrap.innerHTML = `<p class="dempty" style="font-size:.8rem;color:var(--text-3);padding:18px 0">No services match — try another search.</p>`;
-    return;
-  }
-  wrap.innerHTML = list
-    .map(
-      (s) => `
-    <button class="dsvc ${state.serviceIds.has(s.id) ? 'is-selected' : ''}" data-id="${s.id}" type="button" aria-pressed="${state.serviceIds.has(s.id)}">
-      <span class="dsvc__box">${svg('i-check')}</span>
-      <span class="dsvc__main">
-        <span class="dsvc__name">${s.name}</span>
-        <span class="dsvc__meta">${CATEGORY_LABEL[s.cat]} · ${durationLabel(s.mins)}</span>
+}
+
+/* ═══════════ 8 · Process, pillars, gallery, about bits ═══════════ */
+function renderProcess() {
+  $('#processRail').innerHTML = PROCESS.map((p, i) => `
+    <article class="step-card reveal" data-delay="${i * 80}">
+      <span class="step-card__num">${i + 1}</span>
+      <h3>${p.title}</h3><p>${p.text}</p>
+    </article>`).join('');
+  $('#pillarGrid').innerHTML = PILLARS.map((p, i) => `
+    <article class="pillar reveal" data-delay="${(i % 3) * 80}">
+      <span class="pillar__ic">${svg(p.icon)}</span>
+      <div><h3>${p.title}</h3><p>${p.text}</p></div>
+    </article>`).join('');
+}
+
+let lightboxItem = null;
+function renderGallery() {
+  $('#galleryFilters').innerHTML = GALLERY_FILTERS.map((f) => {
+    const count = f.id === 'all' ? GALLERY.length : GALLERY.filter((g) => g.cat === f.id).length;
+    return `<button class="chip ${state.galleryFilter === f.id ? 'is-active' : ''}" type="button"
+      data-gfilter="${f.id}" aria-pressed="${state.galleryFilter === f.id}">${f.label}<small>${count}</small></button>`;
+  }).join('');
+  $$('#galleryFilters .chip').forEach((chip) => chip.addEventListener('click', () => {
+    state.galleryFilter = chip.dataset.gfilter;
+    renderGallery();
+  }));
+
+  const list = GALLERY.filter((g) => state.galleryFilter === 'all' || g.cat === state.galleryFilter);
+  $('#galleryGrid').innerHTML = list.map((g, i) => `
+    <button class="gitem" type="button" data-gindex="${GALLERY.indexOf(g)}" style="animation-delay:${i * 45}ms"
+      aria-label="View ${g.title} up close">
+      <img src="${g.src}" alt="${g.title} at Fresh Start Grooming Lounge" loading="lazy" />
+      <span class="gitem__zoom">${svg('i-search')}</span>
+      <span class="gitem__cap">
+        <em>${g.catLabel}</em>
+        <strong>${g.title}</strong>
+        <span>${g.detail}</span>
       </span>
-      <span class="dsvc__price">${money(s.price)}</span>
-    </button>`
-    )
-    .join('');
-  wrap.querySelectorAll('.dsvc').forEach((row) =>
-    row.addEventListener('click', () => toggleService(row.dataset.id))
+    </button>`).join('');
+  $$('#galleryGrid .gitem').forEach((item) =>
+    item.addEventListener('click', () => openLightbox(GALLERY[Number(item.dataset.gindex)]))
   );
 }
 
-function initDrawerServices() {
-  let debounce;
-  $('#drawerSearch').addEventListener('input', (e) => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      state.drawerQuery = e.target.value;
-      renderDrawerServices();
-    }, 120);
+function openLightbox(item) {
+  lightboxItem = item;
+  const box = $('#lightbox');
+  $('#lightboxImg').src = item.src;
+  $('#lightboxImg').alt = item.title;
+  $('#lightboxTitle').textContent = item.title;
+  $('#lightboxCap').textContent = `${item.catLabel} · ${item.detail}`;
+  $('#lightboxBook').style.display = item.serviceId ? '' : 'none';
+  box.hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('#lightboxClose').focus();
+}
+function closeLightbox() {
+  $('#lightbox').hidden = true;
+  document.body.style.overflow = '';
+}
+function initLightbox() {
+  $('#lightboxClose').addEventListener('click', closeLightbox);
+  $('#lightbox').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeLightbox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#lightbox').hidden) closeLightbox(); });
+  $('#lightboxBook').addEventListener('click', () => {
+    if (lightboxItem?.serviceId) selectService(lightboxItem.serviceId, true);
+    closeLightbox();
+    gotoBooking();
   });
 }
 
-/* ── dates & slots ─────────────────────────────────────── */
+function renderAboutBits() {
+  $('#audienceTags').innerHTML = AUDIENCES.map((a) => `<span class="tag">${a}</span>`).join('');
+  $('#refreshMenu').innerHTML = REFRESHMENTS.map((r) => `
+    <li class="refresh__item">
+      <span><strong>${r.name}</strong><span>${r.detail} — ${r.note}</span></span>
+      <span class="refresh__price"><s>${money(r.price)}</s><b>FREE</b></span>
+    </li>`).join('');
+}
+
+/* ═══════════ 9 · Google Reviews carousel ═══════════ */
+const reviewState = { page: 0, timer: null, hover: false, manual: false };
+const REVIEW_MS = 4000;
+const perPage = () => (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 641 ? 2 : 1);
+const reviewPages = () => Math.ceil(REVIEWS.length / perPage());
+
+function renderReviews() {
+  const per = perPage();
+  reviewState.page = Math.min(reviewState.page, reviewPages() - 1);
+  const start = reviewState.page * per;
+  const slice = REVIEWS.slice(start, start + per);
+  $('#reviewGrid').innerHTML = slice.map((r) => `
+    <article class="review-card" title="Tap to pause / resume">
+      <div class="review-card__head">
+        <span class="avatar" style="background:${r.hue}" aria-hidden="true">${r.initials}</span>
+        <span class="review-card__who"><strong>${r.name}</strong><span>${r.area}</span></span>
+        <svg class="review-card__g" aria-hidden="true"><use href="#i-google"/></svg>
+      </div>
+      <div class="review-card__stars" aria-label="Rated ${r.stars} out of 5 on Google">
+        ${'★'.repeat(r.stars)}${svg('i-check')}
+      </div>
+      <p class="review-card__text">${r.text}</p>
+      <div class="review-card__foot">
+        <span class="review-card__service">${r.service}</span>
+        <span class="review-card__when">${r.when}</span>
+      </div>
+    </article>`).join('');
+  $('#reviewCounter').textContent = `${start + 1}–${start + slice.length} of ${REVIEWS.length}`;
+  $('#reviewDots').innerHTML = Array.from({ length: reviewPages() }, (_, i) =>
+    `<button class="review-dot ${i === reviewState.page ? 'is-active' : ''}" type="button" role="tab"
+      aria-selected="${i === reviewState.page}" aria-label="Reviews page ${i + 1}" data-page="${i}"></button>`).join('');
+  $$('#reviewDots .review-dot').forEach((d) => d.addEventListener('click', () => {
+    reviewState.page = Number(d.dataset.page);
+    renderReviews(); restartReviewTimer();
+  }));
+  $$('#reviewGrid .review-card').forEach((card) => card.addEventListener('click', () => {
+    reviewState.manual = !reviewState.manual;
+    applyReviewPause();
+    toast(reviewState.manual ? 'Reviews paused — tap again to resume' : 'Reviews auto-playing', 'i-star');
+  }));
+}
+
+function isPaused() { return reviewState.hover || reviewState.manual || prefersReduced; }
+function applyReviewPause() {
+  const stage = $('.review-stage');
+  const status = $('#reviewAutoStatus');
+  stage.classList.toggle('is-paused', isPaused());
+  status.innerHTML = `<span class="pulse-dot"></span> ${isPaused() ? 'Paused — tap a card to resume' : 'Auto — hover or tap to pause'}`;
+  if (isPaused()) { clearTimeout(reviewState.timer); }
+  else restartReviewTimer();
+}
+
+function restartReviewTimer() {
+  clearTimeout(reviewState.timer);
+  const bar = $('#reviewProgress');
+  bar.classList.remove('is-anim');
+  void bar.offsetWidth; /* restart CSS animation */
+  if (isPaused()) return;
+  bar.style.animationDuration = `${REVIEW_MS}ms`;
+  bar.classList.add('is-anim');
+  reviewState.timer = setTimeout(() => {
+    reviewState.page = (reviewState.page + 1) % reviewPages();
+    renderReviews();
+    restartReviewTimer();
+  }, REVIEW_MS);
+}
+
+function initReviews() {
+  $('#reviewRating').textContent = REVIEW_SUMMARY.rating.toFixed(1);
+  $('#reviewCountText').textContent = REVIEW_SUMMARY.label;
+  $('#ratingBars').innerHTML = REVIEW_SUMMARY.bars.map((b) => `
+    <div class="gbar"><span>${b.stars} ★</span>
+      <span class="gbar__track"><span class="gbar__fill" style="--w:${b.pct}%"></span></span>
+      <span>${b.pct}%</span></div>`).join('');
+  renderReviews();
+
+  const stage = $('.review-stage');
+  stage.addEventListener('pointerenter', () => { reviewState.hover = true; applyReviewPause(); });
+  stage.addEventListener('pointerleave', () => { reviewState.hover = false; applyReviewPause(); });
+  stage.addEventListener('focusin', () => { reviewState.hover = true; applyReviewPause(); });
+  stage.addEventListener('focusout', () => { reviewState.hover = false; applyReviewPause(); });
+  $('#reviewPrev').addEventListener('click', () => {
+    reviewState.page = (reviewState.page - 1 + reviewPages()) % reviewPages();
+    renderReviews(); restartReviewTimer();
+  });
+  $('#reviewNext').addEventListener('click', () => {
+    reviewState.page = (reviewState.page + 1) % reviewPages();
+    renderReviews(); restartReviewTimer();
+  });
+  let resizeT;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => { renderReviews(); restartReviewTimer(); }, 200);
+  });
+  applyReviewPause();
+}
+
+/* ═══════════ 10 · Booking: dates, slots, summary, submit ═══════════ */
 function buildDates() {
   const now = nairobiNow();
   const [y, m, d] = now.ymd.split('-').map(Number);
   const base = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   const fmtDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
-  const fmtNum = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'UTC' });
-  const fmtMonth = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' });
-  const fmtLong = new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
+  const fmtLong = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   const list = [];
-  for (let i = 0; i < 21; i++) {
+  for (let i = 0; i < 14; i++) {
     const date = new Date(base.getTime() + i * 86400000);
     list.push({
       index: i,
-      date,
       weekday: date.getUTCDay(),
-      dayName: fmtDay.format(date),
-      dayNum: fmtNum.format(date),
-      month: fmtMonth.format(date),
-      label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : fmtDay.format(date),
-      long: fmtLong.format(date),
+      dayName: i === 0 ? 'Today' : fmtDay.format(date),
+      dayNum: date.getUTCDate(),
+      long: i === 0 ? `Today · ${fmtLong.format(date)}` : fmtLong.format(date),
       isToday: i === 0,
       isSunday: date.getUTCDay() === 0,
     });
   }
   return list;
-}
-
-function renderDates() {
-  if (!state.dates.length) state.dates = buildDates();
-  const strip = $('#dateStrip');
-  strip.innerHTML = state.dates
-    .map(
-      (d) => `
-    <button class="dchip ${state.dateIndex === d.index ? 'is-selected' : ''} ${d.isToday && d.isSunday ? 'is-disabled' : ''}"
-      data-date="${d.index}" type="button" aria-pressed="${state.dateIndex === d.index}"
-      ${d.isToday && d.isSunday ? 'disabled' : ''}>
-      <small>${d.dayName}</small>
-      <strong>${d.dayNum}</strong>
-      <span>${d.month}${d.isSunday ? ' · appt' : ''}</span>
-    </button>`
-    )
-    .join('');
-  strip.querySelectorAll('.dchip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      state.dateIndex = Number(chip.dataset.date);
-      state.time = null;
-      renderDates();
-      renderSlots();
-      renderSummary();
-      updateStepNav();
-    })
-  );
-  renderSlots();
-}
-
-function renderSlots() {
-  const date = state.dates[state.dateIndex] ?? state.dates[0];
-  const grid = $('#slotGrid');
-  const now = nairobiNow();
-
-  $('#slotDateLabel').textContent = date.long;
-  $('#sundayNotice').hidden = !date.isSunday;
-  $('#todayNotice').hidden = !date.isToday || date.isSunday;
-
-  const openMin = date.isSunday ? 600 : HOURS.find((h) => h.day === date.weekday)?.openMin ?? 480;
-  const closeMin = date.isSunday ? 1080 : 1200;
-  $('#slotMeta').textContent = `${fmtTime(openMin)} – ${fmtTime(closeMin)}${date.isSunday ? ' · by appointment' : ''}`;
-
-  const slots = [];
-  for (let t = openMin; t <= closeMin - 30; t += 30) slots.push(t);
-
-  grid.innerHTML = slots
-    .map((t) => {
-      const isPast = date.isToday && t <= now.minutes + 45;
-      return `<button class="slot ${state.time === t ? 'is-selected' : ''}" data-time="${t}" type="button"
-        aria-pressed="${state.time === t}" ${isPast ? 'disabled' : ''}>${fmtTime(t)}</button>`;
-    })
-    .join('');
-
-  grid.querySelectorAll('.slot:not(:disabled)').forEach((btn) =>
-    btn.addEventListener('click', () => {
-      state.time = Number(btn.dataset.time);
-      grid.querySelectorAll('.slot').forEach((b) =>
-        b.classList.toggle('is-selected', Number(b.dataset.time) === state.time)
-      );
-      renderSummary();
-      updateStepNav();
-    })
-  );
 }
 
 function fmtTime(mins) {
@@ -867,12 +683,50 @@ function fmtTime(mins) {
   return `${h}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
-function chosenDate() {
-  return state.dates[state.dateIndex] ?? state.dates[0];
+const chosenDate = () => state.dates[state.dateIndex] ?? state.dates[0];
+
+function renderDates() {
+  const strip = $('#dateStrip');
+  strip.innerHTML = state.dates.map((d) => {
+    const disabled = d.isToday && d.isSunday; /* Sunday same-day: must book a day ahead */
+    return `<button class="date-chip ${state.dateIndex === d.index ? 'is-active' : ''}" type="button"
+      data-date="${d.index}" aria-pressed="${state.dateIndex === d.index}" ${disabled ? 'disabled title="Sundays are by appointment, booked a day ahead"' : ''}>
+      <small>${d.dayName}</small><strong>${d.dayNum}</strong>${d.isSunday ? '<i>Appt only</i>' : '<i>&nbsp;</i>'}
+    </button>`;
+  }).join('');
+  $$('.date-chip:not(:disabled)', strip).forEach((chip) => chip.addEventListener('click', () => {
+    state.dateIndex = Number(chip.dataset.date);
+    state.time = null;
+    renderDates();
+  }));
+  renderSlots();
 }
 
-function chosenBarber() {
-  return BARBERS.find((b) => b.id === state.barberId) ?? BARBERS[0];
+function renderSlots() {
+  const date = chosenDate();
+  if (!date) return;
+  const grid = $('#slotGrid');
+  const now = nairobiNow();
+  $('#slotDateLabel').textContent = date.long;
+  $('#sundayNotice').hidden = !date.isSunday;
+  $('#todayNotice').hidden = !date.isToday || date.isSunday;
+
+  const openMin = date.isSunday ? 600 : hoursForDay(date.weekday).openMin ?? 480;
+  const closeMin = date.isSunday ? 1080 : 1200;
+  $('#slotMeta').textContent = `${fmtTime(openMin)} – ${fmtTime(closeMin)}${date.isSunday ? ' · by appointment' : ''}`;
+
+  const slots = [];
+  for (let t = openMin; t <= closeMin - 30; t += 30) slots.push(t);
+  grid.innerHTML = slots.map((t) => {
+    const past = date.isToday && t <= now.minutes + 45;
+    return `<button class="slot ${state.time === t ? 'is-active' : ''}" type="button" data-time="${t}"
+      aria-pressed="${state.time === t}" ${past ? 'disabled' : ''}>${fmtTime(t)}</button>`;
+  }).join('');
+  $$('.slot:not(:disabled)', grid).forEach((btn) => btn.addEventListener('click', () => {
+    state.time = Number(btn.dataset.time);
+    renderSlots();
+  }));
+  renderSummary();
 }
 
 function renderSummary() {
@@ -880,335 +734,118 @@ function renderSummary() {
   if (!wrap) return;
   const list = selectedServices();
   const t = totals();
-  const date = state.dates.length ? chosenDate() : null;
   if (!list.length) {
-    wrap.innerHTML = `<p style="color:var(--text-3);font-size:.78rem">Your rituals will appear here once selected.</p>`;
+    wrap.innerHTML = `<p class="summary__empty">No rituals selected yet — pick from the
+      <a class="link-gold" href="#services">menu above</a> or choose a Main Ritual, and your chair summary appears here.</p>`;
     return;
   }
-  wrap.innerHTML = `
-    ${list
-      .map(
-        (s) => `<div class="summary__row"><span>${s.name} <em style="font-style:normal;opacity:.55">· ${durationLabel(s.mins)}</em></span><b>${money(s.price)}</b></div>`
-      )
-      .join('')}
-    <div class="summary__div"></div>
-    <div class="summary__row"><span>Barber</span><b>${chosenBarber().name}</b></div>
-    <div class="summary__row"><span>Day</span><b>${date ? date.long : '—'}</b></div>
-    <div class="summary__row"><span>Time</span><b>${state.time ? fmtTime(state.time) : 'Not chosen'}</b></div>
-    <div class="summary__row"><span>Chair time</span><b>${durationLabel(t.mins)}</b></div>
-    <div class="summary__div"></div>
-    <div class="summary__row summary__total"><span>Total</span><b>${money(t.price)}</b></div>
-    <div class="summary__row" style="font-size:.68rem;color:var(--text-3);opacity:.8"><span>Includes complimentary refreshments &amp; aftershave massage</span><b></b></div>`;
-}
-
-/* ── submit → WhatsApp ─────────────────────────────────── */
-function initBookingForm() {
-  const form = $('#bookingForm');
-  const errorEl = $('#formError');
-  const nameEl = $('#bookName');
-  const phoneEl = $('#bookPhone');
-  const notesEl = $('#bookNotes');
-
-  [nameEl, phoneEl].forEach((el) =>
-    el.addEventListener('input', () => el.classList.remove('is-invalid'))
-  );
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = nameEl.value.trim();
-    const phone = phoneEl.value.trim();
-    const digits = phone.replace(/[^\d]/g, '');
-
-    errorEl.hidden = true;
-    nameEl.classList.remove('is-invalid');
-    phoneEl.classList.remove('is-invalid');
-
-    if (name.length < 2) {
-      errorEl.textContent = 'Please tell us your name so the lounge can greet you properly.';
-      errorEl.hidden = false;
-      nameEl.classList.add('is-invalid');
-      nameEl.focus();
-      return;
-    }
-    if (digits.length < 9) {
-      errorEl.textContent = 'That phone number looks short — enter a valid WhatsApp number.';
-      errorEl.hidden = false;
-      phoneEl.classList.add('is-invalid');
-      phoneEl.focus();
-      return;
-    }
-    if (!state.time) {
-      goToStep(3);
-      toast('Pick a time slot first', 'i-clock');
-      return;
-    }
-
-    booking.name = name;
-    booking.phone = phone;
-    booking.notes = notesEl.value.trim();
-
-    window.open(buildWhatsAppUrl(), '_blank', 'noopener');
-    toast('Opening WhatsApp with your booking…', 'i-whatsapp');
-  });
-}
-
-function buildWhatsAppUrl() {
-  const list = selectedServices();
-  const t = totals();
   const date = chosenDate();
-  const barber = chosenBarber();
-
-  const lines = [
-    'Hello Fresh Start Grooming Lounge! I would like to reserve a chair.',
-    '',
-    `Name: ${booking.name}`,
-    `Phone: ${booking.phone}`,
-    `Barber: ${barber.name}`,
-    `Day: ${date.long}${date.isSunday ? ' (Sunday appointment)' : ''}`,
-    `Time: ${fmtTime(state.time)}`,
-    '',
-    'Services:',
-    ...list.map((s) => `• ${s.name} — ${money(s.price)} (${durationLabel(s.mins)})`),
-    '',
-    `Total: ${money(t.price)}`,
-    `Chair time: ${durationLabel(t.mins)}`,
-  ];
-  if (booking.notes) lines.push('', `Notes: ${booking.notes}`);
-  lines.push('', 'Please confirm my booking. Asante!');
-
-  return `https://wa.me/${BUSINESS.phoneDigits}?text=${encodeURIComponent(lines.join('\n'))}`;
+  wrap.innerHTML = `
+    ${list.map((s) => `
+      <div class="summary__row">
+        <span>${s.name} · ${durationLabel(s.mins)}</span>
+        <span><b>${money(s.price)}</b> <button type="button" data-remove="${s.id}" aria-label="Remove ${s.name}">Remove</button></span>
+      </div>`).join('')}
+    <div class="summary__row"><span>Barber</span><b>${chosenBarber().name}</b></div>
+    <div class="summary__row"><span>When</span><b>${date ? date.long : ''}${state.time != null ? ` · ${fmtTime(state.time)}` : ' · pick a time'}</b></div>
+    <div class="summary__total"><span>Total chair time ${durationLabel(t.mins)}</span><strong>${money(t.price)}</strong></div>
+    <p class="summary__free">Included FREE: aftershave hand & shoulder massage + coffee / tea / light bites.</p>`;
+  $$('[data-remove]', wrap).forEach((b) => b.addEventListener('click', () => selectService(b.dataset.remove)));
 }
 
-function initDrawer() {
-  $$('[data-open-booking]').forEach((btn) =>
-    btn.addEventListener('click', () => openDrawer(1))
-  );
-  $('#drawerClose').addEventListener('click', closeDrawer);
-  $('#drawerScrim').addEventListener('click', closeDrawer);
-  $('#stepBack').addEventListener('click', () => goToStep(state.step - 1));
-  $('#stepNext').addEventListener('click', nextStep);
-  $('#claimOffer').addEventListener('click', () => {
-    if (!state.serviceIds.has('freefriend')) state.serviceIds.add('freefriend');
-    syncSelectionUI();
-    openDrawer(1);
-    toast('Offer applied — bring 2 friends, yours is free', 'i-sparkle');
-  });
-  $$('[data-pick-barber="any"]').forEach((el) =>
-    el.addEventListener('click', () => {
-      selectBarber('any', { from: 'grid' });
-      $('#providers')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    })
-  );
-
-  // focus trap + escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (!$('#lightbox').hidden) closeLightbox();
-      else if (!$('#bookingDrawer').hidden) closeDrawer();
-      if (document.activeElement === $('#serviceSearch')) {
-        $('#serviceSearch').blur();
-      }
-    }
-    if (e.key === '/' && !isTyping(e.target)) {
-      e.preventDefault();
-      $('#serviceSearch')?.focus();
-    }
-    if (e.key === 'Tab' && !$('#bookingDrawer').hidden) {
-      const focusables = $$(
-        '#bookingDrawer button:not([hidden]):not(:disabled), #bookingDrawer a[href], #bookingDrawer input, #bookingDrawer textarea, #bookingDrawer select',
-        $('#bookingDrawer')
-      ).filter((el) => el.offsetParent !== null);
-      if (!focusables.length) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  });
+function showError(msg) {
+  const el = $('#formError');
+  el.textContent = msg;
+  el.hidden = !msg;
+  if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function isTyping(el) {
-  return el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
-}
+function initBooking() {
+  $('#bookBarber').innerHTML = BARBERS.map((b) =>
+    `<option value="${b.id}">${b.name}${b.id !== 'any' ? ` — ${b.role}` : ''}</option>`).join('');
+  $('#bookService').innerHTML = `<option value="">Choose your main ritual…</option>` + CATEGORIES.filter((c) => c.id !== 'all').map((c) =>
+    `<optgroup label="${c.label}">${SERVICES.filter((s) => s.cat === c.id)
+      .map((s) => `<option value="${s.id}">${s.name} · ${money(s.price)}</option>`).join('')}</optgroup>`).join('');
 
-/* ══════════════════════════════════════════════════════════
-   10 · Lightbox
-   ══════════════════════════════════════════════════════════ */
-function initLightbox() {
-  const lb = $('#lightbox');
-  const img = $('#lightboxImg');
-  const cap = $('#lightboxCap');
+  $('#bookBarber').addEventListener('change', (e) => selectBarber(e.target.value));
+  $('#bookService').addEventListener('change', (e) => { if (e.target.value) selectService(e.target.value, true); });
 
-  $$('#gallery .frame').forEach((frame) =>
-    frame.addEventListener('click', () => {
-      img.src = frame.dataset.src;
-      img.alt = frame.querySelector('img')?.alt ?? '';
-      cap.textContent = frame.dataset.caption ?? '';
-      lb.hidden = false;
-      document.body.classList.add('no-scroll');
-      requestAnimationFrame(() => lb.classList.add('is-open'));
-      $('#lightboxClose').focus();
-    })
-  );
-
-  const close = closeLightbox;
-  $('#lightboxClose').addEventListener('click', close);
-  lb.addEventListener('click', (e) => {
-    if (e.target === lb) close();
-  });
-  function closeLightbox() {
-    lb.classList.remove('is-open');
-    document.body.classList.remove('no-scroll');
-    setTimeout(() => {
-      lb.hidden = true;
-      img.src = '';
-    }, 320);
-  }
-  window.closeLightbox = closeLightbox;
-}
-
-/* ══════════════════════════════════════════════════════════
-   11 · Toasts
-   ══════════════════════════════════════════════════════════ */
-function toast(message, icon = 'i-sparkle') {
-  const stack = $('#toastStack');
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML = `<span class="toast__ic">${svg(icon)}</span><span>${message}</span>`;
-  stack.appendChild(el);
-  while (stack.children.length > 3) stack.firstElementChild.remove();
-  setTimeout(() => {
-    el.classList.add('is-out');
-    setTimeout(() => el.remove(), 400);
-  }, 2900);
-}
-
-/* ══════════════════════════════════════════════════════════
-   12 · Scroll: header, progress, reveal, counters, top
-   ══════════════════════════════════════════════════════════ */
-function initScrollEffects() {
-  const header = $('#siteHeader');
-  const bar = $('#scrollBar');
-  const toTop = $('#toTop');
-
-  const onScroll = () => {
-    const y = window.scrollY;
-    header.classList.toggle('is-stuck', y > 24);
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    bar.style.width = `${max > 0 ? clamp((y / max) * 100, 0, 100) : 0}%`;
-    toTop.classList.toggle('is-visible', y > 640);
-  };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-
-  toTop.addEventListener('click', () =>
-    window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' })
-  );
-
-  // staggered delays
-  $$('[data-delay]').forEach((el) => el.style.setProperty('--d', `${el.dataset.delay}ms`));
-}
-
-let revealObserver;
-
-function initReveal() {
-  revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-in');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { rootMargin: '0px 0px -8% 0px', threshold: 0.06 }
-  );
-  revealInView();
-}
-
-function revealInView() {
-  $$('.reveal:not(.is-in)').forEach((el) => {
-    if (revealObserver) revealObserver.observe(el);
-    else el.classList.add('is-in');
-  });
-}
-
-function initCounters() {
-  const els = $$('[data-count]');
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        const el = entry.target;
-        observer.unobserve(el);
-        const target = Number(el.dataset.count);
-        const decimals = Number(el.dataset.decimal || 0);
-        if (prefersReduced) {
-          el.textContent = target.toFixed(decimals);
-          return;
-        }
-        const start = performance.now();
-        const dur = 1300;
-        const step = (now) => {
-          const p = clamp((now - start) / dur, 0, 1);
-          const eased = 1 - Math.pow(1 - p, 3);
-          el.textContent = (target * eased).toFixed(decimals);
-          if (p < 1) requestAnimationFrame(step);
-          else el.textContent = target.toFixed(decimals);
-        };
-        requestAnimationFrame(step);
-      });
-    },
-    { threshold: 0.6 }
-  );
-  els.forEach((el) => observer.observe(el));
-}
-
-/* ══════════════════════════════════════════════════════════
-   13 · Boot
-   ══════════════════════════════════════════════════════════ */
-function init() {
-  $('#year').textContent = String(new Date().getFullYear() === 2026 ? 2026 : new Date().getFullYear());
-
-  initTheme();
-  initTabs();
-  initHours();
-  renderBarbers();
-  renderChips();
-  renderServices();
-  initMenuTools();
-  renderRefreshments();
-  renderSocials();
+  state.dates = buildDates();
+  if (state.dates[0]?.isSunday) state.dateIndex = 1; /* today-Sunday cannot be same-day booked */
   renderDates();
-  renderDrawerBarbers();
-  renderDrawerChips();
-  renderDrawerServices();
-  initDrawerServices();
-  initDrawer();
-  initBookingForm();
-  initSelectionBar();
-  initLightbox();
-  initScrollEffects();
-  initCounters();
-  syncSelectionUI();
 
-  // keep date strip truthful if the tab is left open past midnight
-  setInterval(() => {
-    state.dates = buildDates();
-    if (state.dateIndex >= state.dates.length) state.dateIndex = 0;
-    renderDates();
-  }, 5 * 60 * 1000);
+  ['bookName', 'bookPhone'].forEach((id) => $('#' + id).addEventListener('input', () => showError('')));
 
-  runLoader();
+  $('#bookingForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('#bookName').value.trim();
+    const phone = $('#bookPhone').value.trim();
+    const list = selectedServices();
+    if (!list.length) return showError('Select at least one ritual from the menu (or the Main Ritual dropdown) so we can reserve the right chair time.');
+    if (state.time == null) return showError('Pick a time slot above — slots refresh every 30 minutes of lounge time.');
+    if (name.length < 2) return showError('Please add your name so the desk can check you in.');
+    if (phone.replace(/\D/g, '').length < 9) return showError('Please add a valid phone / WhatsApp number (e.g. 0712345678).');
+    showError('');
+
+    const t = totals();
+    const date = chosenDate();
+    const lines = [
+      `Hello Fresh Start Grooming Lounge! I'd like to reserve a chair.`,
+      ``,
+      `Name: ${name}`,
+      `Phone: ${phone}`,
+      `Barber: ${chosenBarber().name}`,
+      `Visit: ${$('#bookVisit').value} · ${$('#bookGuest').value}`,
+      `When: ${date.long} at ${fmtTime(state.time)}${date.isSunday ? ' (Sunday appointment)' : ''}`,
+      ``,
+      `Rituals:`,
+      ...list.map((s) => `• ${s.name} — ${money(s.price)} (${durationLabel(s.mins)})`),
+      ``,
+      `Total: ${money(t.price)} · Chair time: ${durationLabel(t.mins)}`,
+    ];
+    const notes = $('#bookNotes').value.trim();
+    if (notes) lines.push(``, `Notes: ${notes}`);
+    lines.push(``, `— sent from the Fresh Start website`);
+    window.open(`https://wa.me/${BUSINESS.phoneDigits}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener');
+    toast('Opening WhatsApp with your reservation…', 'i-whatsapp');
+  });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+/* ═══════════ 11 · Socials, FAQ ═══════════ */
+function renderSocials() {
+  $('#socialGrid').innerHTML = SOCIALS.map((s) => `
+    <a class="social-card" href="${s.href}" target="_blank" rel="noopener">
+      <span class="social-card__ic">${svg(s.icon)}</span>
+      <span><strong>${s.label}</strong><span>${s.handle}</span></span>
+    </a>`).join('');
 }
+
+function renderFaqs() {
+  $('#faqList').innerHTML = FAQS.map((f) => `
+    <details class="faq__item">
+      <summary>${f.q}<span class="faq__ic">${svg('i-plus')}</span></summary>
+      <div class="faq__a"><p>${f.a}</p></div>
+    </details>`).join('');
+  $$('#faqList .faq__item').forEach((item) => item.addEventListener('toggle', () => {
+    if (item.open) $$('#faqList .faq__item').forEach((o) => { if (o !== item) o.open = false; });
+  }));
+}
+
+/* ═══════════ Init ═══════════ */
+initTheme();
+renderBarbers();
+initBarberRailNav();
+initServices();
+renderProcess();
+renderGallery();
+initLightbox();
+renderAboutBits();
+initReviews();
+initHours();
+initBooking();
+renderSocials();
+renderFaqs();
+initHeader();
+initTicker();
+$('#year').textContent = String(new Date().getFullYear());
+runLoader();

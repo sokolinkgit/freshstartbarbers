@@ -5,9 +5,13 @@ A luxury, dark-and-gold, fully interactive website for **Fresh Start Grooming Lo
 
 > *Every cut is a fresh start.*
 
+**Layout cloned from [hicksonsolarsolution.vercel.app](https://hicksonsolarsolution.vercel.app/)** —
+same section-by-section structure and flow, but dressed entirely in the Fresh Start
+**barber theme** (near-black & gold, Cormorant Italic accents, barber-pole stripes) with all
+barber content, plus livelier header/footer and a full **Google Reviews** section.
+
 Built as a hand-crafted static site (Vite + vanilla JS, no framework runtime) with self-hosted
-variable fonts, generated editorial photography and a real multi-step reservation flow that
-hands off to the lounge's WhatsApp line.
+variable fonts, local photography and a WhatsApp reservation flow.
 
 ---
 
@@ -24,82 +28,97 @@ Deploy the `dist/` folder (or the repo root on Vercel — the included `vercel.j
 
 ---
 
-## What's inside
+## Layout — Hickson structure, barber edition
 
-### Experience
-- **Loading screen** — logo, five stars igniting one by one, “5 Star Rated”, address pill and a
-  gold progress bar. Repeat visits in the same session get a shorter version.
-- **Sticky header** — logo, `Overview | Info` tab switcher with a sliding gold pill,
-  light/dark theme toggle (sun ↔ moon) and a gold **Reserve** button.
-- **Dark / light themes** — warm parchment light mode, near-black gold-flecked dark mode.
-  Choice persists in `localStorage`.
-- **Overview tab** — cinematic hero, “Select Service Provider” barber cards (defaults to
-  *Any Available Barber*), the Fresh Start standard pillars, the 25-service menu with live
-  search + category counts + sorting, the group-of-three offer ticket, Lounge Hospitality
-  refreshments, an inside-the-lounge gallery with lightbox, and quick links.
-- **Info tab** — Hours & Location directory, full weekly hours with a live **Open now /
-  closes 8:00 pm** badge and a highlighted *TODAY* row, Sunday policy box, map card +
-  Plus Code, official social channels, “Getting to the Chair” steps, FAQ and a booking CTA.
-- **Reservation drawer** — 4 steps (Services → Barber → Day & time → Confirm) with running
-  total, total chair time, 30-minute slots, past-slot blocking, Sunday appointment rules,
-  validation, and a pre-filled WhatsApp message including every service and price.
-- **Sticky selection bar** — appears as soon as services are multi-selected.
+| Hickson Solar section | Fresh Start version |
+| --- | --- |
+| Hero “Power, Wire & Connect…” + 3 CTAs + trust chips + stats bar | **“Cut. Shave. Refresh. *Every Cut Is A Fresh Start.*”** — Reserve / Call / WhatsApp CTAs, trust chips, animated stats (25 rituals · 5 barbers · 5.0★ · from KSh 500) and a floating Google-rating badge |
+| Who We Power & Connect (swipe cards) | **Who Holds The Clippers** — swipeable barber rail (5 barbers + *Any Available*), selectable into your booking |
+| What We Install + “Important: we install only” banner | **Services menu** (25 rituals, search + category chips + sort, multi-select with live totals) + gold “On The House” banner (free massage + coffee/tea/bites) |
+| How It Works — 4 steps + 6 features | **Street To Sharp In 4 Steps** + 6 lounge pillars |
+| Projects Gallery (filters + lightbox) | **Work Gallery** — filter by craft, tap to zoom, *Book this look* |
+| About + checklist + tags + SEO block | **Pure Craftsmanship. Zero Rush.** — checklist, audience tags, photo collage, SEO panel + Refreshments panel |
+| Client Reviews (Google, auto-rotating) | **Google Reviews (NEW, expanded)** — see below |
+| Get Your Free Quote (WhatsApp form) | **Reserve Your Chair** — name/phone/barber/ritual/visit-type selects, 14-day date strip, 30-min slots, live summary → pre-filled WhatsApp |
+| FAQ + sticky Call/WhatsApp bar | Same 6 barber FAQs + sticky mobile Call / WhatsApp / Reserve bar |
 
-### Details that matter
-- Live Nairobi (`Africa/Nairobi`) clock logic — works for visitors in any timezone.
-- 21-day date strip; today’s Sunday is not bookable, Sundays are labelled *appt*.
-- Multi-select syncs between the menu, the drawer and the summary.
-- `prefers-reduced-motion` respected; keyboard support (`/` search, `Esc` closes overlays,
-  focus trap in the drawer); ARIA tabs/dialogs; JSON-LD `HairSalon` structured data.
-- Mobile-first: bottom-sheet booking drawer, scroll-snap barber rail, safe-area padding.
-- Zero third-party runtime requests — fonts are bundled, images are local.
+### Lively header
+- Animated **barber-pole stripe** (gold/black/cream) across the very top and the footer.
+- **Top announcement bar**: live **Open now / Closed / By appointment** badge (Africa/Nairobi
+  clock), a **rotating offers ticker** (FREE group cut, Shave Na Mbogi, Sunday policy…),
+  phone, address and socials.
+- Sticky glass header that **shrinks + shadows on scroll**, brand logo with ★★★★★ 5.0 mini-rating,
+  **sliding gold nav pill** with scroll-spy active states, theme toggle, call button, gold Reserve
+  button and an animated mobile menu. Gold scroll-progress hairline up top.
+
+### Google Reviews (new)
+- Authentic white Google summary card: multicolour **Google** wordmark, verified chip, big **5.0**,
+  stars, animated **rating breakdown bars**, *Review Us On Google* / *Read All On Google* buttons
+  (point at the lounge's Google Maps listing).
+- **Auto-rotating carousel**: 3 reviews at a time (2 on tablet, 1 on phone), refreshes every
+  4 seconds with a gold progress bar, dots, prev/next, `1–3 of 9` counter. **Hover or tap a card
+  to pause** — exactly like the reference layout.
+- Review cards carry coloured initial avatars, Google “G”, 5 stars + verified tick, service tag
+  and time. Edit or swap in live Google reviews any time in `REVIEWS` / `REVIEW_SUMMARY`
+  inside **`src/data.js`**.
+
+### Lively footer
+- Barber-pole top edge, “Ready for a *fresh start?*” CTA row with live open-status, 4 columns
+  (brand + Google 5.0 card + socials with handles, Explore, Popular Rituals that **one-tap book**,
+  Visit Us with directions + animated back-to-top), a giant outlined **FRESH START** watermark,
+  and a legal bar with the 5.0 Google line.
+
+### Kept from the previous barber site
+Loading screen (logo, igniting stars, “5 Star Rated”), dark/light themes stored in
+`localStorage`, all **25 services & prices**, all **5 barbers**, hours (Thu opens 8:30 am,
+Sunday strictly by appointment booked a day ahead — today-Sunday is disabled in the date
+strip), group-of-three offer ticket, complimentary refreshments, socials, FAQ copy,
+past-slot blocking (45-min buffer), `/` search shortcut, toasts, lightbox, sticky selection
+bar, JSON-LD `HairSalon`, `prefers-reduced-motion` support.
 
 ---
 
 ## Editing content
 
-All copy, prices, barbers, hours, socials and refreshment data live in **`src/data.js`**:
+All copy, prices, barbers, hours, reviews and gallery data live in **`src/data.js`**:
 
-| Export         | Controls                                                     |
-| -------------- | ------------------------------------------------------------ |
-| `BUSINESS`     | phone, WhatsApp, address, map link, social URLs, rating       |
-| `CATEGORIES`   | menu categories and filter chips                              |
-| `SERVICES`     | 25 services — name, minutes, KSh price, description, VIP flag |
-| `BARBERS`      | the five barbers + *Any Available Barber*                     |
-| `HOURS`        | weekly schedule + Sunday appointment flag                     |
-| `REFRESHMENTS` | the complimentary lounge menu                                 |
-| `SOCIALS`      | social channel cards                                          |
+| Export | Controls |
+| --- | --- |
+| `BUSINESS` | phone, WhatsApp, address, map link, social URLs, rating |
+| `CATEGORIES` / `SERVICES` | 25 services — name, minutes, KSh price, description, VIP flag |
+| `BARBERS` | the five barbers + *Any Available Barber* |
+| `HOURS` | weekly schedule + Sunday appointment flag |
+| `REFRESHMENTS` | complimentary lounge menu |
+| `GALLERY` / `GALLERY_FILTERS` | gallery frames, filters, “book this look” service links |
+| `PROCESS` / `PILLARS` | 4 steps + 6 feature cards |
+| `REVIEWS` / `REVIEW_SUMMARY` | Google Reviews carousel + 5.0 summary bars |
+| `FAQS` / `AUDIENCES` | FAQ accordion + About tag row |
+| `SOCIALS` | social channel cards |
 
-Styling tokens (gold, ink, radii, type scale) are at the top of **`src/styles.css`**.
-Markup and static sections live in **`index.html`**; interactions in **`src/main.js`**.
+Styling tokens (gold, ink, radii) are at the top of **`src/styles.css`** (dark default,
+`[data-theme="light"]` parchment overrides). Markup lives in **`index.html`**;
+interactions in **`src/main.js`**.
 
 ---
 
-## Imagery
-
-Photography in `public/img/` is AI-generated to match the lounge's dark-gold aesthetic.
-Thirteen images in total — all currently in use:
+## Imagery — `public/img/`
 
 | File | Used for |
 | --- | --- |
-| `hero.jpg` | Hero background + Info tab card |
-| `vip.jpg` | Gallery — hot-towel ritual |
-| `fade.jpg` | Gallery — precision fade |
-| `beard.jpg` | Gallery + Info tab CTA band |
-| `lounge.jpg` | Refreshments section + gallery |
-| `facial.jpg` | Gallery — full facial ritual |
-| `massage.jpg` | Gallery — body rituals |
-| `hands.jpg` | Gallery — hand care |
-| `barber-*.jpg` | Five barber portraits (starkid, cossy, alphie, mike, dan) |
-The supplied logo lives at `public/logo.png` and is used in the header, loader, favicon,
-footer, and the *Any Available Barber* card. Swap in real photography any time — the file
-names are referenced from `index.html` and `src/data.js`.
+| `hero.jpg` | Hero background + About + Gallery |
+| `vip.jpg` | Gallery/About — hot-towel ritual |
+| `fade.jpg`, `beard.jpg` | Gallery (fade, beard) + footer CTA band |
+| `facial.jpg`, `massage.jpg`, `hands.jpg` | Gallery — face & body rituals |
+| `lounge.jpg` | Refreshments + Gallery |
+| `barber-*.jpg` | Five barber portraits (+`barber-dan.jpg` in Gallery) |
+
+The supplied logo lives at `public/logo.png` (header, loader, favicon, footer).
 
 ---
 
 ## Contact used on the site
 
-- **Phone / WhatsApp:** 0741 578791 (+254 741 578 791)
+- **Phone / WhatsApp:** 0741578791 (+254 741 578 791)
 - **Address:** Superior Center, Kenyatta Avenue, 4th Floor, Suite K-5, Nairobi
 - **Plus Code:** PR8F+H4 Nairobi
 - **Instagram / Facebook / TikTok:** @fresh_start_barbers / @Freshstartbarbers / @freshstartbarbers
