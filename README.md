@@ -45,7 +45,7 @@ Deploy the `dist/` folder (or the repo root on Vercel — the included `vercel.j
 ### Lively header
 - Animated **barber-pole stripe** (gold/black/cream) across the very top and the footer.
 - **Top announcement bar**: live **Open now / Closed / By appointment** badge (Africa/Nairobi
-  clock), a **rotating offers ticker** (FREE group cut, Shave Na Mbogi, Sunday policy…),
+  clock), a **rotating offers ticker** (referral Classic Shave, 3-person package, Mbogi Experience, Sunday premium policy…),
   phone, address and socials.
 - Sticky glass header that **shrinks + shadows on scroll**, brand logo with ★★★★★ 5.0 mini-rating,
   **sliding gold nav pill** with scroll-spy active states, theme toggle, call button, gold Reserve
@@ -78,11 +78,26 @@ controls are 16px (no iOS focus-zoom), slots become a tidy 3-up grid, and the fo
 scales to fit. Internal rails (barbers, date strip) still swipe sideways by design — the page
 itself never does.
 
+### Final refinements
+- Hero statistics carry their final values in markup (**25, 5, 5.0★, KSh 500 services from**) and
+  the count-up glides from 55% of target, so a counter can never display 0 / “KSh 0”.
+  No years-of-experience statistics are shown.
+- Services are arranged **lowest → highest price within each category** (menu order and booking
+  dropdown).
+- Reviews reflect a diverse five-star clientele — Nairobi regulars, Somali gentlemen and
+  international guests (London, Dubai, Berlin).
+- Opening hours are consistent everywhere: **walk-ins welcome Mon–Sat** (Thu from 8:30 am);
+  Sunday is listed verbatim as **“By Appointment Only! Premium Rates Apply.”** in the hours
+  table, hero, footer, FAQs, date strip (today-Sunday disabled), booking summary and WhatsApp
+  handoff — with the premium rate confirmed before a Sunday chair is reserved.
+- Offers: **The Mbogi Experience** (3 student haircuts, KSh 2,500, **Mon–Wed only**, student ID
+  optional — enforced in booking validation); **3-Person Haircut Package** (KSh 3,000, 90 min);
+  **Bring 2 Friends referral** (two Bespoke Haircuts at KSh 1,500 each; the host's Classic Shave
+  is complimentary in the same 90-minute visit).
+
 ### Kept from the previous barber site
 Loading screen (logo, igniting stars, “5 Star Rated”), dark/light themes stored in
-`localStorage`, all **25 services & prices**, all **5 barbers**, hours (Thu opens 8:30 am,
-Sunday strictly by appointment booked a day ahead — today-Sunday is disabled in the date
-strip), group-of-three offer ticket, complimentary refreshments, socials, FAQ copy,
+`localStorage`, all **25 services**, all **5 barbers**, complimentary refreshments, socials,
 past-slot blocking (45-min buffer), `/` search shortcut, toasts, lightbox, sticky selection
 bar, JSON-LD `HairSalon`, `prefers-reduced-motion` support.
 
@@ -97,7 +112,7 @@ All copy, prices, barbers, hours, reviews and gallery data live in **`src/data.j
 | `BUSINESS` | phone, WhatsApp, address, map link, social URLs, rating |
 | `CATEGORIES` / `SERVICES` | 25 services — name, minutes, KSh price, description, VIP flag |
 | `BARBERS` | the five barbers + *Any Available Barber* |
-| `HOURS` | weekly schedule + Sunday appointment flag |
+| `HOURS` / `SUNDAY_POLICY` | weekly schedule + canonical Sunday premium listing |
 | `REFRESHMENTS` | complimentary lounge menu |
 | `GALLERY` / `GALLERY_FILTERS` | gallery frames, filters, “book this look” service links |
 | `PROCESS` / `PILLARS` | 4 steps + 6 feature cards |

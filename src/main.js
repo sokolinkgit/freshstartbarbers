@@ -10,6 +10,7 @@ import {
   SERVICES,
   BARBERS,
   HOURS,
+  SUNDAY_POLICY,
   REFRESHMENTS,
   SOCIALS,
   GALLERY_FILTERS,
@@ -157,17 +158,25 @@ function initReveal() {
 function animateCount(el) {
   const target = Number(el.dataset.count);
   const decimals = Number(el.dataset.decimal || 0);
-  if (prefersReduced) { el.textContent = target.toFixed(decimals); return; }
-  const dur = 1400;
+  const finalText = target.toLocaleString('en-KE', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  /* Markup already carries the final values — a counter must never sit
+     at 0 (or "KSh 0") if animation/observation is unavailable. */
+  if (prefersReduced || !Number.isFinite(target)) { el.textContent = finalText; return; }
+  const dur = 900;
   const start = performance.now();
   const step = (t) => {
     const p = Math.min(1, (t - start) / dur);
     const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = (target * eased).toLocaleString('en-KE', {
+    /* Glide in from 55% of the final value — lively, never zero. */
+    el.textContent = (target * (0.55 + 0.45 * eased)).toLocaleString('en-KE', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
     if (p < 1) requestAnimationFrame(step);
+    else el.textContent = finalText;
   };
   requestAnimationFrame(step);
 }
@@ -193,11 +202,11 @@ const hoursForDay = (day) => HOURS.find((h) => h.day === day) ?? HOURS[0];
 function openStatus() {
   const now = nairobiNow();
   const today = hoursForDay(now.day);
-  if (today.appointment) return { open: false, appt: true, label: 'By appointment today', detail: 'Sunday · appointments only', today };
-  if (now.minutes < today.openMin) return { open: false, label: `Closed · opens ${today.open}`, detail: `Opens today at ${today.open}`, today };
+  if (today.appointment) return { open: false, appt: true, label: SUNDAY_POLICY, detail: 'Sunday · please book a day ahead', today };
+  if (now.minutes < today.openMin) return { open: false, label: `Closed · opens ${today.open}`, detail: `Opens today at ${today.open} · walk-ins welcome`, today };
   if (now.minutes >= today.closeMin) {
     const tomorrow = hoursForDay((now.day + 1) % 7);
-    return { open: false, label: 'Closed', detail: tomorrow.appointment ? 'Tomorrow is Sunday · by appointment' : `Opens ${tomorrow.open} tomorrow`, today };
+    return { open: false, label: 'Closed', detail: tomorrow.appointment ? `Tomorrow (Sunday): ${SUNDAY_POLICY}` : `Opens ${tomorrow.open} tomorrow · walk-ins welcome`, today };
   }
   return { open: true, label: 'Open now · closes 8:00 pm', detail: 'Closes 8:00 pm', today };
 }
@@ -212,7 +221,9 @@ function updateStatus() {
   });
   $$('[data-status-line]').forEach((l) => { l.textContent = `${s.label} · ${s.detail}`; });
   $$('[data-today-hours]').forEach((el) => {
-    el.textContent = s.today.appointment ? 'Today: by appointment only' : `Today: ${s.today.open} – ${s.today.close}`;
+    const value = s.today.appointment ? SUNDAY_POLICY : `${s.today.open} – ${s.today.close}`;
+    /* The hero card labels its own row "Today" — don't repeat it there. */
+    el.textContent = el.closest('.hero__card-list') ? value : `Today: ${value}`;
   });
 }
 
@@ -230,11 +241,12 @@ function initHours() {
 
 /* ═══════════ 5 · Header: ticker, scroll, nav pill, mobile menu ═══════════ */
 const TICKER = [
-  'Bring 2 friends — your haircut is FREE',
+  'Bring 2 friends — your Classic Shave is complimentary',
+  '3-Person Haircut Package · KSh 3,000 · 90 min',
+  'The Mbogi Experience: 3 student haircuts · KSh 2,500 · Mon–Wed · ID optional',
+  'Walk-ins welcome Mon–Sat · 8:00 am – 8:00 pm (Thu from 8:30 am)',
+  'Sunday: By Appointment Only! Premium Rates Apply. Book a day ahead — 0741578791',
   'Free coffee, tea, light bites & aftershave massage with every service',
-  'Students: “Shave Na Mbogi” group of 3 — KSh 2,000 with valid ID',
-  'Walk-ins welcome Mon–Sat · 8:00 am – 8:00 pm',
-  'Sundays by appointment — book a day ahead on 0741578791',
   'Rated 5.0 ★★★★★ on Google',
 ];
 
@@ -322,7 +334,7 @@ function renderBarbers() {
         : `<span class="barber-card__avatar" aria-hidden="true">${b.initials}</span>`}
       <span class="barber-card__seal">${svg('i-check')}</span>
       <span class="barber-card__body">
-        <span class="barber-card__role">${b.role}${b.years ? ` · ${b.years} yrs` : ''}</span>
+        <span class="barber-card__role">${b.role}</span>
         <span class="barber-card__name">${b.name}</span>
         <span class="barber-card__note">${b.note}</span>
         <span class="barber-card__specs">${b.specialties.map((s) => `<span class="spec">${s}</span>`).join('')}</span>
@@ -437,9 +449,9 @@ function updateSelectionUI() {
   const n = state.serviceIds.size;
   const bar = $('#selectBar');
   bar.hidden = n === 0;
-  $('#selCount').textContent = String(n);
-  $('#selTotal').textContent = money(t.price);
-  $('#selTime').textContent = durationLabel(t.mins);
+  $('#selCount').textContent = n ? String(n) : '—';
+  $('#selTotal').textContent = n ? money(t.price) : 'KSh —';
+  $('#selTime').textContent = n ? durationLabel(t.mins) : '';
   renderSummary();
 }
 
@@ -464,7 +476,7 @@ function initServices() {
   });
   $('#claimOffer').addEventListener('click', () => {
     selectService('freefriend', true);
-    toast('Group of 3 claimed — your cut is FREE', 'i-crown');
+    toast('Referral treat claimed — complimentary Classic Shave for the host', 'i-crown');
     gotoBooking();
   });
   document.addEventListener('keydown', (e) => {
@@ -685,13 +697,17 @@ function fmtTime(mins) {
 
 const chosenDate = () => state.dates[state.dateIndex] ?? state.dates[0];
 
+/* Services restricted to certain weekdays (e.g. The Mbogi Experience, Mon–Wed) */
+const dayRestrictedServices = (list, date) =>
+  date ? list.filter((s) => Array.isArray(s.days) && !s.days.includes(date.weekday)) : [];
+
 function renderDates() {
   const strip = $('#dateStrip');
   strip.innerHTML = state.dates.map((d) => {
     const disabled = d.isToday && d.isSunday; /* Sunday same-day: must book a day ahead */
     return `<button class="date-chip ${state.dateIndex === d.index ? 'is-active' : ''}" type="button"
-      data-date="${d.index}" aria-pressed="${state.dateIndex === d.index}" ${disabled ? 'disabled title="Sundays are by appointment, booked a day ahead"' : ''}>
-      <small>${d.dayName}</small><strong>${d.dayNum}</strong>${d.isSunday ? '<i>Appt only</i>' : '<i>&nbsp;</i>'}
+      data-date="${d.index}" aria-pressed="${state.dateIndex === d.index}" ${disabled ? `disabled title="Sunday: ${SUNDAY_POLICY} Please book a day ahead."` : d.isSunday ? `title="Sunday: ${SUNDAY_POLICY}"` : ''}>
+      <small>${d.dayName}</small><strong>${d.dayNum}</strong>${d.isSunday ? '<i>Premium</i>' : '<i>&nbsp;</i>'}
     </button>`;
   }).join('');
   $$('.date-chip:not(:disabled)', strip).forEach((chip) => chip.addEventListener('click', () => {
@@ -710,10 +726,17 @@ function renderSlots() {
   $('#slotDateLabel').textContent = date.long;
   $('#sundayNotice').hidden = !date.isSunday;
   $('#todayNotice').hidden = !date.isToday || date.isSunday;
+  if (date.isSunday) {
+    const visit = $('#bookVisit');
+    const sundayOption = visit && Array.from(visit.options).find((o) => o.text.startsWith('Sunday'));
+    if (sundayOption) visit.value = sundayOption.value;
+  }
 
   const openMin = date.isSunday ? 600 : hoursForDay(date.weekday).openMin ?? 480;
   const closeMin = date.isSunday ? 1080 : 1200;
-  $('#slotMeta').textContent = `${fmtTime(openMin)} – ${fmtTime(closeMin)}${date.isSunday ? ' · by appointment' : ''}`;
+  $('#slotMeta').textContent = date.isSunday
+    ? `${fmtTime(openMin)} – ${fmtTime(closeMin)} · ${SUNDAY_POLICY}`
+    : `${fmtTime(openMin)} – ${fmtTime(closeMin)} · walk-ins welcome`;
 
   const slots = [];
   for (let t = openMin; t <= closeMin - 30; t += 30) slots.push(t);
@@ -740,6 +763,7 @@ function renderSummary() {
     return;
   }
   const date = chosenDate();
+  const blocked = dayRestrictedServices(list, date);
   wrap.innerHTML = `
     ${list.map((s) => `
       <div class="summary__row">
@@ -748,7 +772,9 @@ function renderSummary() {
       </div>`).join('')}
     <div class="summary__row"><span>Barber</span><b>${chosenBarber().name}</b></div>
     <div class="summary__row"><span>When</span><b>${date ? date.long : ''}${state.time != null ? ` · ${fmtTime(state.time)}` : ' · pick a time'}</b></div>
-    <div class="summary__total"><span>Total chair time ${durationLabel(t.mins)}</span><strong>${money(t.price)}</strong></div>
+    <div class="summary__total"><span>${date?.isSunday ? 'Standard menu total' : 'Total'} · chair time ${durationLabel(t.mins)}</span><strong>${money(t.price)}</strong></div>
+    ${date?.isSunday ? `<p class="summary__warn"><b>Sunday — ${SUNDAY_POLICY}</b> The total above is our standard Mon–Sat menu guide; we will confirm your exact premium rate on WhatsApp before your chair is reserved.</p>` : ''}
+    ${blocked.length ? `<p class="summary__warn"><b>${blocked.map((s) => s.name).join(', ')}</b> runs <b>Monday to Wednesday only</b> — please choose a Mon, Tue or Wed above to use this offer.</p>` : ''}
     <p class="summary__free">Included FREE: aftershave hand & shoulder massage + coffee / tea / light bites.</p>`;
   $$('[data-remove]', wrap).forEach((b) => b.addEventListener('click', () => selectService(b.dataset.remove)));
 }
@@ -781,28 +807,35 @@ function initBooking() {
     const name = $('#bookName').value.trim();
     const phone = $('#bookPhone').value.trim();
     const list = selectedServices();
+    const date = chosenDate();
     if (!list.length) return showError('Select at least one ritual from the menu (or the Main Ritual dropdown) so we can reserve the right chair time.');
+    const blocked = dayRestrictedServices(list, date);
+    if (blocked.length) return showError(`${blocked[0].name} runs Monday to Wednesday only — please choose a Monday, Tuesday or Wednesday above, or remove it from your summary.`);
+    if (date?.isSunday && date.isToday) return showError(`Sunday is ${SUNDAY_POLICY} Please choose a future Sunday at least one day ahead.`);
+    const visitType = $('#bookVisit').value;
+    if (visitType.startsWith('Walk-in today') && !date?.isToday) return showError('You chose “Walk-in today” — please pick today’s date above, or change Visit Type to a reservation.');
+    if (visitType.startsWith('Sunday') && !date?.isSunday) return showError(`You chose a Sunday premium appointment — please pick a Sunday above (Sunday: ${SUNDAY_POLICY}).`);
     if (state.time == null) return showError('Pick a time slot above — slots refresh every 30 minutes of lounge time.');
     if (name.length < 2) return showError('Please add your name so the desk can check you in.');
     if (phone.replace(/\D/g, '').length < 9) return showError('Please add a valid phone / WhatsApp number (e.g. 0712345678).');
     showError('');
 
     const t = totals();
-    const date = chosenDate();
     const lines = [
       `Hello Fresh Start Grooming Lounge! I'd like to reserve a chair.`,
       ``,
       `Name: ${name}`,
       `Phone: ${phone}`,
       `Barber: ${chosenBarber().name}`,
-      `Visit: ${$('#bookVisit').value} · ${$('#bookGuest').value}`,
-      `When: ${date.long} at ${fmtTime(state.time)}${date.isSunday ? ' (Sunday appointment)' : ''}`,
+      `Visit: ${date.isSunday ? `Sunday — ${SUNDAY_POLICY}` : $('#bookVisit').value} · ${$('#bookGuest').value}`,
+      `When: ${date.long} at ${fmtTime(state.time)}${date.isSunday ? ` (${SUNDAY_POLICY})` : ''}`,
       ``,
       `Rituals:`,
       ...list.map((s) => `• ${s.name} — ${money(s.price)} (${durationLabel(s.mins)})`),
       ``,
-      `Total: ${money(t.price)} · Chair time: ${durationLabel(t.mins)}`,
+      `${date.isSunday ? 'Standard menu total (guide)' : 'Total'}: ${money(t.price)} · Chair time: ${durationLabel(t.mins)}`,
     ];
+    if (date.isSunday) lines.push(`Please confirm my exact Sunday premium rate and availability before reserving my chair.`);
     const notes = $('#bookNotes').value.trim();
     if (notes) lines.push(``, `Notes: ${notes}`);
     lines.push(``, `— sent from the Fresh Start website`);
