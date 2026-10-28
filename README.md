@@ -77,8 +77,20 @@ Markup and static sections live in **`index.html`**; interactions in **`src/main
 
 ## Imagery
 
-Photography in `public/img/` is AI-generated to match the lounge's dark-gold aesthetic:
-`hero.jpg`, `lounge.jpg`, `vip.jpg`, `fade.jpg`, `beard.jpg` and five barber portraits.
+Photography in `public/img/` is AI-generated to match the lounge's dark-gold aesthetic.
+Thirteen images in total — all currently in use:
+
+| File | Used for |
+| --- | --- |
+| `hero.jpg` | Hero background + Info tab card |
+| `vip.jpg` | Gallery — hot-towel ritual |
+| `fade.jpg` | Gallery — precision fade |
+| `beard.jpg` | Gallery + Info tab CTA band |
+| `lounge.jpg` | Refreshments section + gallery |
+| `facial.jpg` | Gallery — full facial ritual |
+| `massage.jpg` | Gallery — body rituals |
+| `hands.jpg` | Gallery — hand care |
+| `barber-*.jpg` | Five barber portraits (starkid, cossy, alphie, mike, dan) |
 The supplied logo lives at `public/logo.png` and is used in the header, loader, favicon,
 footer, and the *Any Available Barber* card. Swap in real photography any time — the file
 names are referenced from `index.html` and `src/data.js`.
