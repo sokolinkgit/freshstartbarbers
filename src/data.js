@@ -223,6 +223,92 @@ export const SOCIALS = [
   },
 ];
 
+/* ────────────────────────────────────────────────────────────
+   Added for the Hickson-style layout — same barber content,
+   new sections: gallery filters, 4-step process, Google reviews.
+   ──────────────────────────────────────────────────────────── */
+
+/* Gallery — Hickson "Projects Gallery", translated to lounge work.
+   cat ids: cuts · beard · face · body · lounge              */
+export const GALLERY_FILTERS = [
+  { id: 'all', label: 'All Work' },
+  { id: 'cuts', label: 'Cuts & Fades' },
+  { id: 'beard', label: 'Beard & Shave' },
+  { id: 'face', label: 'Face & Skin' },
+  { id: 'body', label: 'Body & Hands' },
+  { id: 'lounge', label: 'The Lounge' },
+];
+
+export const GALLERY = [
+  { src: '/img/fade.jpg', cat: 'cuts', catLabel: 'Cuts & Fades', title: 'Precision Skin Fade & Line-Up', detail: 'Clipper-blended fade · razor temple line · 40 min', serviceId: 'bespoke' },
+  { src: '/img/vip.jpg', cat: 'beard', catLabel: 'Beard & Shave', title: 'The Hot-Towel Ritual', detail: 'Straight razor · hot towel · VIP Collection finish', serviceId: 'vip1' },
+  { src: '/img/beard.jpg', cat: 'beard', catLabel: 'Beard & Shave', title: 'Beard Sculpture', detail: 'Detailed sculpt · edge line-up · conditioning oil & balm', serviceId: 'beard' },
+  { src: '/img/facial.jpg', cat: 'face', catLabel: 'Face & Skin', title: 'Full Facial Ritual', detail: 'Deep cleansing · warm ozone steam · botanical mask', serviceId: 'fullfacial' },
+  { src: '/img/massage.jpg', cat: 'body', catLabel: 'Body & Hands', title: 'Full Body Massage', detail: 'Therapeutic relaxation · warm botanical oils · 60 min', serviceId: 'fullmassage' },
+  { src: '/img/hands.jpg', cat: 'body', catLabel: 'Body & Hands', title: 'Manicure & Hand Care', detail: 'Exfoliation · cuticle grooming · buff at the marble counter', serviceId: 'manicure' },
+  { src: '/img/hero.jpg', cat: 'cuts', catLabel: 'Cuts & Fades', title: 'The Bespoke Chair', detail: 'Tailored cut · scalp wash · custom styling', serviceId: 'bespoke' },
+  { src: '/img/lounge.jpg', cat: 'lounge', catLabel: 'The Lounge', title: 'Coffee, Always On Us', detail: 'Coffee · tea · light bites with every service', serviceId: null },
+  { src: '/img/barber-dan.jpg', cat: 'lounge', catLabel: 'The Lounge', title: 'Dan Cuts — Senior Barber', detail: '12 years behind the chair · Suite K-5, 4th floor', serviceId: null },
+];
+
+/* How it works — Hickson 4-step flow, barber edition */
+export const PROCESS = [
+  { title: 'Pick Your Rituals', text: 'Browse the 25-service menu and select one or many. Your price and total chair time add up live — no surprises at the counter.' },
+  { title: 'Choose Your Barber', text: 'Request Starkid, Cossy, Alphie, Mike or Dan — or take the next available chair and let the lounge match you.' },
+  { title: 'Day & Time', text: 'Mon–Sat 8:00 am – 8:00 pm walk-ins welcome (Thu from 8:30 am). Sundays by appointment, booked a day ahead.' },
+  { title: 'Confirm & Sit Down', text: 'Your request opens pre-filled on WhatsApp 0741578791. We confirm, the towel warms, coffee is poured — take the chair.' },
+];
+
+/* Why gentlemen stay — Hickson 6-feature strip, barber edition */
+export const PILLARS = [
+  { icon: 'i-scissors', title: 'Consultation First', text: 'Hairline, growth pattern, lifestyle. Your barber reads the head before the clippers ever switch on.' },
+  { icon: 'i-razor', title: 'Razor Discipline', text: 'Straight-razor perimeters, clean necks, sculpted beards — finished by hand, never rushed.' },
+  { icon: 'i-cup', title: 'Lounge Hospitality', text: 'Freshly brewed coffee, tea and light bites are complimentary with every single service.' },
+  { icon: 'i-crown', title: 'Discreet & Premium', text: 'A fourth-floor sanctuary on Kenyatta Avenue away from the street — private and unhurried.' },
+  { icon: 'i-whatsapp', title: 'Direct WhatsApp Line', text: 'Call or WhatsApp 0741578791 and talk straight to the lounge — bookings confirmed fast.' },
+  { icon: 'i-sparkle', title: 'Free Finishing Touch', text: 'Complimentary aftershave hand & shoulder massage included with every service, every visit.' },
+];
+
+/* Google Reviews — showcased reviews rendered by the Reviews section.
+   Swap these entries with the lounge's live Google reviews any time;
+   the "Read all on Google" button points at BUSINESS.mapsUrl.       */
+export const REVIEW_SUMMARY = {
+  rating: 5.0,
+  label: '5 Star Rated · Google Verified',
+  bars: [
+    { stars: 5, pct: 100 },
+    { stars: 4, pct: 0 },
+    { stars: 3, pct: 0 },
+    { stars: 2, pct: 0 },
+    { stars: 1, pct: 0 },
+  ],
+};
+
+export const REVIEWS = [
+  { name: 'Brian Mwangi', area: 'Nairobi CBD', initials: 'BM', hue: '#c9a24d', stars: 5, when: '1w ago', service: 'Bespoke Haircut', text: '“Sharpest fade I have had in town. Consultation first, razor line-up, hot towel finish — and the coffee is genuinely free. This is my weekly chair now.”' },
+  { name: 'Kevin Omondi', area: 'Westlands, Nairobi', initials: 'KO', hue: '#7a9cc6', stars: 5, when: '2w ago', service: 'Beard Trim', text: '“Alphie sculpted my beard and lined everything with a straight razor. Clean, patient, zero rush. The 4th-floor lounge feels nothing like a normal barbershop.”' },
+  { name: 'Samuel Kiprop', area: 'Upper Hill, Nairobi', initials: 'SK', hue: '#8fbf7f', stars: 5, when: '2w ago', service: 'VIP Experience II', text: '“Took the Complete Gentleman before my wedding — shave, facial, mani-pedi and massage in one sitting. Worth every shilling. Five stars, no debate.”' },
+  { name: 'David Njoroge', area: 'Kilimani, Nairobi', initials: 'DN', hue: '#c67b5c', stars: 5, when: '3w ago', service: 'Grey Blending + Cut', text: '“Dan blended my greys so naturally nobody can tell. Executive cut, calm hands, exact finish. Booking on WhatsApp took under a minute.”' },
+  { name: 'Peter Kamau', area: 'Kiambu Road', initials: 'PK', hue: '#9b8fd4', stars: 5, when: '1mo ago', service: 'Bring 2 Friends Offer', text: '“Came with two friends and my cut was FREE, just like the offer says. Three bespoke cuts, coffee on arrival, shoulder massage after. We are regulars.”' },
+  { name: 'Anthony Mutua', area: 'South B, Nairobi', initials: 'AM', hue: '#d4b15c', stars: 5, when: '1mo ago', service: 'Student — Shave Na Mbogi', text: '“The student group package is real value — three of us, valid IDs, clean cuts all round for KSh 2,000. Mike blends a fade like nobody else.”' },
+  { name: 'George Otieno', area: 'Ngong Road, Nairobi', initials: 'GO', hue: '#5cb8a6', stars: 5, when: '1mo ago', service: 'Full Facial + Massage', text: '“Booked a Sunday appointment a day ahead as advised. Facial and massage reset my whole week. Private, quiet, premium — exactly as described.”' },
+  { name: 'James Mwangi', area: 'Ruiru, Kiambu', initials: 'JW', hue: '#c65c7b', stars: 5, when: '2mo ago', service: 'Skin Fade & Line-Up', text: '“Starkid’s fades are architectural. Lines stayed crisp for weeks. Walked in on a Saturday and was in the chair fast. Highly recommend.”' },
+  { name: 'Michael Tembo', area: 'Kileleshwa, Nairobi', initials: 'MT', hue: '#6f9fd8', stars: 5, when: '2mo ago', service: 'Caucasian Haircut', text: '“Finally a Nairobi barber who truly understands fine-hair scissor work. Proper taper, proper texturing, and a hot-towel finish. Five stars.”' },
+];
+
+/* FAQs — copied verbatim from the previous Info tab */
+export const FAQS = [
+  { q: 'Do I need an appointment, or can I walk in?', a: 'Walk-ins are welcome Monday to Saturday, 8:00 am to 8:00 pm. If you want a specific barber — or you\'re coming with friends — reserve on WhatsApp so your chair is held.' },
+  { q: 'How do Sunday bookings work?', a: 'Sundays are strictly by appointment only, and the latest Sunday appointment must be booked at least one day in advance. Message 0741578791 and the lounge will confirm your slot.' },
+  { q: 'Can I combine several services in one visit?', a: 'Yes — that is exactly how the menu is built. Select any combination of the 25 services and your total chair time is added up for you before you reserve. The VIP Collection already bundles the full ritual.' },
+  { q: 'What does the complimentary offer include?', a: 'Every service includes a complimentary aftershave hand & shoulder massage, plus coffee, tea and light bites in the lounge — normally KSh 250, KSh 200 and KSh 350, on the house.' },
+  { q: 'How does “Bring 2 friends” work?', a: 'Book the group of three (90 minutes, KSh 3,000). Bring two friends, pay for two haircuts, and yours is free. Students with a valid ID also get the “Shave Na Mbogi” package for three at KSh 2,000.' },
+  { q: 'Where exactly is the lounge?', a: 'Superior Center, Kenyatta Avenue, 4th Floor, Suite K-5, Nairobi. Google Plus Code PR8F+H4 Nairobi — take the lift to the fourth floor and follow the signage.' },
+];
+
+/* Who takes the chair — audience tags used in About (Hickson tag row) */
+export const AUDIENCES = ['Executives', 'Grooms & Groomsmen', 'Students', 'Young Gentlemen', 'Beard Regulars', 'Colour & Style', 'VIP Guests', 'Walk-ins'];
+
 export const money = (n) => `KSh ${Number(n).toLocaleString('en-KE')}`;
 
 export const durationLabel = (mins) => {
