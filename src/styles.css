@@ -735,6 +735,259 @@ em { font-family: var(--serif); font-style: italic; font-weight: 600; color: var
   [data-theme='light'] .mobile-cta button { color: var(--gold-deep); }
 }
 
+/* ════════════════════════════════════════════════════════════
+   Mobile optimisation — zero horizontal scrolling, text that
+   always fits. Root-cause fixes:
+   · grid/flex children get min-width:0 so scroll-strips inside
+     them (date strip) scroll internally instead of forcing the
+     whole track — and the page — wider than the viewport.
+   · fr tracks become minmax(0,1fr); nowrap is relaxed on touch.
+   ════════════════════════════════════════════════════════════ */
+
+/* Never let the page itself scroll sideways (clip keeps
+   position:sticky working, unlike hidden in some browsers). */
+html { overflow-x: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@supports (overflow: clip) {
+  html, body { overflow-x: clip; }
+}
+
+/* Grid/flex children must be allowed to shrink below their
+   content's intrinsic size — this alone kills most blowouts. */
+.hero__inner > *, .section-head > *, .reserve-grid > *, .reserve-form > *,
+.form-grid > *, .about-grid > *, .about-bottom > *, .faq-wrap > *,
+.reviews-layout > *, .footer__grid > *, .footer__cta > *, .process > *,
+.pillars > *, .menu-grid > *, .gallery-grid > *, .review-grid > *,
+.menu-tools > *, .ticket > *, .hero-stats > *, .social-grid > * { min-width: 0; }
+
+/* fr tracks that can actually shrink */
+.process { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.review-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hero-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.reserve-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr); }
+.form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.menu-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 265px), 1fr)); }
+
+/* Booking form: the date-strip must scroll inside its box,
+   not stretch the form to 1,100px+ (the #1 overflow source). */
+.reserve-form { grid-template-columns: minmax(0, 1fr); }
+.reserve-form > * { max-width: 100%; }
+.slot-block { min-width: 0; max-width: 100%; }
+.date-strip { max-width: 100%; overscroll-behavior-x: contain; }
+.field { min-width: 0; }
+.field input, .field select, .field textarea { min-width: 0; max-width: 100%; }
+.slot-head { flex-wrap: wrap; }
+.summary__row { flex-wrap: wrap; }
+.summary__row > span:first-child { flex: 1 1 180px; min-width: 0; }
+
+/* Search/sort row: shrink gracefully below the 320px basis */
+.search { flex: 1 1 min(100%, 320px); min-width: 0; }
+.search input { width: 100%; }
+.sort { min-width: 0; }
+.sort select { min-width: 0; max-width: 100%; }
+
+/* Buttons & badges may wrap rather than force width */
+.btn { white-space: normal; text-align: center; }
+.chip { max-width: 100%; text-align: center; justify-content: center; }
+.status-badge { min-width: 0; }
+.status-badge [data-status-text] { min-width: 0; }
+.panel__head { flex-wrap: wrap; }
+
+/* Long words / handles / prices break inside their boxes */
+h1, h2, h3, p, li, dt, dd, summary { overflow-wrap: break-word; }
+.section-title, .hero__title, .ticket__title, .serif-title { text-wrap: balance; }
+.footer__social a span, .social-card strong, .detail-list a,
+.hero__card-list dd, .summary__row, .review-card__who strong,
+.review-card__who span { overflow-wrap: anywhere; }
+
+/* Footer watermark must fit the screen, not clip its letters */
+.footer__giant { font-size: clamp(2.2rem, 11vw, 12.5rem); letter-spacing: 0.02em; }
+
+/* Social cards: only go two-up when each card truly fits */
+.social-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.social-card > span:last-child { min-width: 0; }
+
+/* About collage never pokes past the viewport edge */
+.about__fig--small { right: 0; }
+.about__stamp { left: 0; }
+
+/* ── Tablets & small laptops ────────────────────────────── */
+@media (max-width: 1120px) {
+  .process { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 920px) {
+  .hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reserve-grid, .about-grid, .about-bottom, .faq-wrap { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Phones ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .shell { width: calc(100% - 28px); }
+  .section { padding: 62px 0; }
+  .section-head { margin-bottom: 30px; gap: 16px; }
+  .section-title { font-size: clamp(1.72rem, 8.2vw, 2.25rem); line-height: 1.1; }
+  .serif-title { font-size: clamp(1.8rem, 8.4vw, 2.3rem); }
+  .section-sub { font-size: 0.95rem; margin-top: 10px; }
+  .eyebrow { font-size: 0.67rem; letter-spacing: 0.15em; line-height: 1.5; }
+  .panel { padding: 19px; }
+  input, select, textarea { font-size: 16px; } /* stops iOS focus zoom */
+
+  /* Header + topbar always fit */
+  .topbar { font-size: 0.76rem; }
+  .topbar__inner { flex-wrap: wrap; justify-content: center; row-gap: 2px; column-gap: 14px; padding-block: 7px; text-align: center; }
+  .topbar__links { gap: 12px; }
+  .header__inner { gap: 10px; }
+  .header__actions { gap: 7px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .brand { gap: 9px; min-width: 0; }
+  .brand__logo { width: 41px; height: 41px; }
+  .brand__text { min-width: 0; }
+  .brand__text strong { font-size: 1.01rem; }
+  .brand__text em { font-size: 0.84rem; }
+  .mobile-menu nav a { min-height: 44px; display: flex; align-items: center; }
+
+  /* Hero */
+  .hero__inner { padding-top: 42px; gap: 34px; }
+  .hero__eyebrow { font-size: 0.64rem; letter-spacing: 0.11em; padding: 0.5em 0.85em; line-height: 1.5; }
+  .hero__title { font-size: clamp(2rem, 10.4vw, 2.6rem); line-height: 1.06; margin-top: 18px; }
+  .hero__lede { font-size: 0.98rem; margin-top: 16px; }
+  .hero__cta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 24px; }
+  .hero__cta .btn { padding: 0.85em 0.6em; font-size: 0.92rem; min-height: 50px; }
+  .hero__cta .btn:first-child { grid-column: 1 / -1; }
+  .hero__chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
+  .hero__chips span { justify-content: center; text-align: center; font-size: 0.74rem; line-height: 1.35; padding: 0.6em 0.45em; }
+  .hero__card { width: 100%; max-width: none; padding: 21px 18px; }
+  .google-float { right: 10px; top: -21px; padding: 8px 12px 8px 10px; }
+  .google-float strong { font-size: 0.82rem; }
+  .hero__card-addr { font-size: 1.04rem; }
+  .hero__card-list > div { flex-wrap: wrap; gap: 2px 12px; }
+  .hero__card-list dd { margin-left: auto; text-align: right; }
+  .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero-stats > div { padding: 16px 8px; }
+  .hero-stats strong { font-size: 1.35rem; }
+  .hero-stats span { font-size: 0.72rem; line-height: 1.4; display: block; margin-top: 2px; }
+
+  /* Barbers rail: card ~82% of screen, peeking next card */
+  .barber-rail { grid-auto-columns: min(82vw, 288px); gap: 14px; padding-bottom: 18px; }
+  .barber-card__img, .barber-card__avatar { height: 190px; }
+  .rail-controls { flex-wrap: wrap; }
+
+  /* Services */
+  .menu-tools { flex-direction: column; gap: 10px; }
+  .search { flex: none; width: 100%; }
+  .sort { width: 100%; justify-content: space-between; }
+  .sort select { flex: 1; }
+  .chips { gap: 7px; margin-bottom: 20px; }
+  .chip { font-size: 0.8rem; padding: 0.55em 0.85em; min-height: 40px; }
+  .svc { padding: 17px; }
+  .svc__foot { flex-wrap: wrap; }
+  .notice-banner { padding: 18px; gap: 13px; }
+  .notice-banner__ic { width: 44px; height: 44px; }
+  .ticket__left { padding: 26px 19px; }
+  .ticket__right { padding: 24px 19px; }
+  .ticket__title { font-size: clamp(1.5rem, 7.4vw, 2rem); }
+  .ticket__actions .btn { width: 100%; }
+  .ticket__badge-mid { font-size: 2.4rem; }
+
+  /* Process & pillars */
+  .process, .pillars { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .step-card, .pillar { padding: 19px; }
+
+  /* Gallery: two per row, captions wrap neatly */
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gitem__cap em { letter-spacing: 0.09em; font-size: 0.64rem; }
+  .gitem__cap strong { font-size: 0.88rem; line-height: 1.3; }
+  .gitem__cap span { font-size: 0.74rem; line-height: 1.4; }
+
+  /* About */
+  .about__media { padding-bottom: 54px; }
+  .about__fig--small { width: 56%; }
+  .about__stamp { bottom: 78px; font-size: 0.68rem; padding: 10px 12px; }
+  .refresh-panel__head { flex-direction: column; align-items: flex-start; gap: 13px; }
+  .refresh-panel__head img { width: 100%; height: 118px; }
+  .refresh__item { gap: 10px; }
+  .refresh__item > span:first-child { min-width: 0; }
+  .seo-panel h3 { font-size: 1.16rem; }
+
+  /* Reviews */
+  .gcard { padding: 21px 19px; }
+  .gcard__score strong { font-size: 2.7rem; }
+  .review-stage__head { flex-wrap: wrap; gap: 8px 12px; }
+  .review-stage__auto { order: 3; flex: 1 0 100%; font-size: 0.8rem; }
+  .review-grid { grid-template-columns: minmax(0, 1fr); }
+  .review-card { padding: 19px; }
+  .review-card__who { min-width: 0; }
+  .review-card__foot { flex-wrap: wrap; }
+
+  /* Reserve */
+  .reserve-form { gap: 16px; }
+  .reserve-form__head h3 { font-size: 1.22rem; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); gap: 13px; }
+  .slot-block { padding: 13px; }
+  .date-chip { width: 59px; padding: 9px 2px 7px; }
+  .date-chip small { font-size: 0.62rem; }
+  .date-chip i { font-size: 0.56rem; }
+  .slot-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .slot { padding: 0.55em 0.15em; font-size: 0.8rem; min-height: 40px; }
+  .contact-card { padding: 16px; gap: 13px; }
+  .contact-card > span:nth-child(2) { min-width: 0; }
+  .contact-card__ic { width: 46px; height: 46px; }
+  .hour-row { font-size: 0.85rem; padding: 8px 9px; }
+  .detail-list__ic { width: 38px; height: 38px; }
+
+  /* FAQ & CTA */
+  .faq__item summary { padding: 17px 18px; font-size: 0.95rem; }
+  .faq__a { padding: 0 18px 18px; }
+  .cta-band__body { padding: 30px 20px; }
+  .cta-band__actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .cta-band__actions .btn { width: 100%; }
+
+  /* Footer */
+  .footer__cta { padding: 38px 0 30px; }
+  .footer__cta-btns { width: 100%; }
+  .footer__cta-btns .btn { flex: 1 1 0; }
+  .footer__grid { grid-template-columns: minmax(0, 1fr); gap: 30px; padding-top: 38px; }
+  .footer__legal { flex-direction: column; gap: 6px; }
+  .footer__google { max-width: 100%; }
+
+  /* Fixed bars & overlays */
+  .selectbar { width: calc(100% - 20px); }
+  .selectbar__inner { padding-left: 15px; gap: 9px; }
+  .toast-stack { left: 12px; right: 12px; justify-items: stretch; }
+  .toast { max-width: none; }
+  .lightbox { padding: 12px; }
+  .lightbox figcaption { flex-direction: column; align-items: flex-start; gap: 9px; }
+  .lightbox__actions { margin-left: 0; width: 100%; }
+  .lightbox__actions .btn { flex: 1 1 0; }
+}
+
+/* ── Very small phones (≤360px / foldables) ─────────────── */
+@media (max-width: 360px) {
+  .brand__text em { display: none; }
+  .brand__text strong { font-size: 1.06rem; }
+  .hero__cta { grid-template-columns: minmax(0, 1fr); }
+  .hero__chips { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .google-float small { display: none; }
+  .gallery-grid { gap: 8px; }
+  .slot { font-size: 0.74rem; }
+  .contact-card__arrow { display: none; }
+  .selectbar__count { display: none; }
+  .selectbar__meta span { display: none; }
+  .mobile-cta a, .mobile-cta button { font-size: 0.8rem; gap: 5px; padding: 14px 3px; }
+}
+
+/* Hover lifts off on touch — no sticky shifts under thumbs */
+@media (hover: none) {
+  .btn:hover, .icon-btn:hover, .barber-card:hover, .svc:hover,
+  .gitem:hover, .pillar:hover, .step-card:hover, .chip:hover,
+  .contact-card:hover, .review-card:hover, .tag:hover { transform: none; }
+}
+
 /* ── Motion preferences / print ─────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
