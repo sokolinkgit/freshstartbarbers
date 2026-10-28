@@ -5,7 +5,7 @@
 export const BUSINESS = {
   name: 'Fresh Start Grooming Lounge',
   logoName: 'Fresh Start Barbers',
-  tagline: 'Every cut is a fresh start',
+  tagline: 'Every haircut is a fresh start',
   heroTagline: 'Your grooming. Your standard.',
   phone: '0741 578791',
   phoneIntl: '+254741578791',
