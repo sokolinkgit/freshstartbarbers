@@ -2076,7 +2076,7 @@ html[data-theme='light'] .sort select option {
   grid-row: span 2;
   grid-column: span 2;
 }
-.frame:nth-child(2) {
+.frame--wide {
   grid-row: span 1;
   grid-column: span 2;
 }
@@ -4003,7 +4003,7 @@ html[data-theme='light'] .mapcard__tag {
     grid-auto-rows: 140px;
   }
   .frame--tall,
-  .frame:nth-child(2) {
+  .frame--wide {
     grid-column: span 2;
     grid-row: span 1;
   }
