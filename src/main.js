@@ -24,6 +24,8 @@ import {
   money,
   durationLabel,
 } from './data.js';
+import { supabase, withTimeout } from './lib/supabase.js';
+import { hydrateContent, saveBooking, LIVE } from './lib/content.js';
 
 /* ═══════════ Helpers ═══════════ */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -240,7 +242,9 @@ function initHours() {
 }
 
 /* ═══════════ 5 · Header: ticker, scroll, nav pill, mobile menu ═══════════ */
-const TICKER = [
+/* Default ticker — replaced by live ads from Admin → Ads when the
+   Supabase backend is connected. */
+const DEFAULT_TICKER = [
   'Bring 2 friends — your Classic Shave is complimentary',
   '3-Person Haircut Package · KSh 3,000 · 90 min',
   'The Mbogi Experience: 3 student haircuts · KSh 2,500 · Mon–Wed · ID optional',
@@ -249,15 +253,18 @@ const TICKER = [
   'Free coffee, tea, light bites & aftershave massage with every service',
   'Rated 5.0 ★★★★★ on Google',
 ];
+const tickerItems = () => (LIVE.ticker.length ? LIVE.ticker : DEFAULT_TICKER);
 
 function initTicker() {
   const el = $('#topTicker');
   let i = 0;
+  el.textContent = tickerItems()[0];
   setInterval(() => {
     el.classList.add('is-out');
     setTimeout(() => {
-      i = (i + 1) % TICKER.length;
-      el.textContent = TICKER[i];
+      const items = tickerItems();
+      i = (i + 1) % items.length;
+      el.textContent = items[i];
       el.classList.remove('is-out');
     }, 460);
   }, 4200);
@@ -634,13 +641,17 @@ function restartReviewTimer() {
   }, REVIEW_MS);
 }
 
-function initReviews() {
+function renderReviewSummary() {
   $('#reviewRating').textContent = REVIEW_SUMMARY.rating.toFixed(1);
   $('#reviewCountText').textContent = REVIEW_SUMMARY.label;
   $('#ratingBars').innerHTML = REVIEW_SUMMARY.bars.map((b) => `
     <div class="gbar"><span>${b.stars} ★</span>
       <span class="gbar__track"><span class="gbar__fill" style="--w:${b.pct}%"></span></span>
       <span>${b.pct}%</span></div>`).join('');
+}
+
+function initReviews() {
+  renderReviewSummary();
   renderReviews();
 
   const stage = $('.review-stage');
@@ -680,12 +691,15 @@ function buildDates() {
       dayName: i === 0 ? 'Today' : fmtDay.format(date),
       dayNum: date.getUTCDate(),
       long: i === 0 ? `Today · ${fmtLong.format(date)}` : fmtLong.format(date),
+      iso: date.toISOString().slice(0, 10),
       isToday: i === 0,
       isSunday: date.getUTCDay() === 0,
     });
   }
   return list;
 }
+
+const dateIso = (date) => date?.iso ?? null;
 
 function fmtTime(mins) {
   let h = Math.floor(mins / 60);
@@ -786,12 +800,22 @@ function showError(msg) {
   if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function initBooking() {
-  $('#bookBarber').innerHTML = BARBERS.map((b) =>
+function fillBookingSelects() {
+  const barberSel = $('#bookBarber');
+  const serviceSel = $('#bookService');
+  const prevBarber = barberSel.value;
+  const prevService = serviceSel.value;
+  barberSel.innerHTML = BARBERS.map((b) =>
     `<option value="${b.id}">${b.name}${b.id !== 'any' ? ` — ${b.role}` : ''}</option>`).join('');
-  $('#bookService').innerHTML = `<option value="">Choose your main ritual…</option>` + CATEGORIES.filter((c) => c.id !== 'all').map((c) =>
+  serviceSel.innerHTML = `<option value="">Choose your main ritual…</option>` + CATEGORIES.filter((c) => c.id !== 'all').map((c) =>
     `<optgroup label="${c.label}">${SERVICES.filter((s) => s.cat === c.id)
       .map((s) => `<option value="${s.id}">${s.name} · ${money(s.price)}</option>`).join('')}</optgroup>`).join('');
+  if (BARBERS.some((b) => b.id === prevBarber)) barberSel.value = prevBarber;
+  if (SERVICES.some((s) => s.id === prevService)) serviceSel.value = prevService;
+}
+
+function initBooking() {
+  fillBookingSelects();
 
   $('#bookBarber').addEventListener('change', (e) => selectBarber(e.target.value));
   $('#bookService').addEventListener('change', (e) => { if (e.target.value) selectService(e.target.value, true); });
@@ -839,6 +863,24 @@ function initBooking() {
     const notes = $('#bookNotes').value.trim();
     if (notes) lines.push(``, `Notes: ${notes}`);
     lines.push(``, `— sent from the Fresh Start website`);
+
+    /* Mirror the request into the Supabase booking inbox (Admin →
+       Bookings). Fire-and-forget: WhatsApp always opens, even offline. */
+    saveBooking({
+      name,
+      phone,
+      barber_id: state.barberId,
+      barber_name: chosenBarber().name,
+      visit_type: visitType,
+      guest_status: $('#bookGuest').value,
+      visit_date: dateIso(date),
+      visit_time: fmtTime(state.time),
+      services: list.map((s) => ({ id: s.id, name: s.name, price: s.price, mins: s.mins })),
+      total_price: t.price,
+      total_mins: t.mins,
+      notes,
+    }).catch(() => { /* inbox is best-effort */ });
+
     window.open(`https://wa.me/${BUSINESS.phoneDigits}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener');
     toast('Opening WhatsApp with your reservation…', 'i-whatsapp');
   });
@@ -864,6 +906,128 @@ function renderFaqs() {
   }));
 }
 
+/* ═══════════ 12 · Live backend: content, promo banner, admin bar ═══════════ */
+
+/* Swap in live Supabase content without ever blocking first paint. */
+async function hydrateLiveContent() {
+  let result;
+  try {
+    result = await hydrateContent();
+  } catch {
+    result = { connected: false, schemaMissing: false, changed: [] };
+  }
+  const changed = result.changed || [];
+
+  if (changed.includes('barbers')) {
+    if (!BARBERS.some((b) => b.id === state.barberId)) state.barberId = BARBERS[0]?.id ?? 'any';
+    renderBarbers();
+  }
+  if (changed.includes('services')) {
+    const valid = new Set(SERVICES.map((s) => s.id));
+    state.serviceIds.forEach((id) => { if (!valid.has(id)) state.serviceIds.delete(id); });
+    renderChips();
+    renderServices();
+    updateSelectionUI();
+  }
+  if (changed.includes('gallery')) renderGallery();
+  if (changed.includes('reviews')) {
+    reviewState.page = 0;
+    renderReviewSummary();
+    renderReviews();
+    restartReviewTimer();
+  }
+  if (changed.includes('barbers') || changed.includes('services')) fillBookingSelects();
+  renderSummary();
+  renderPromoBanner();
+  updateBackendStatus(result);
+}
+
+/* Dismissible promo banner fed by Admin → Ads (placement: banner). */
+function renderPromoBanner() {
+  const wrap = $('#promoBanner');
+  const ad = LIVE.banner;
+  if (!wrap) return;
+  let dismissed = null;
+  try { dismissed = sessionStorage.getItem('fs-promo-dismissed'); } catch { /* ignore */ }
+  if (!ad || dismissed === String(ad.id)) { wrap.hidden = true; return; }
+
+  $('#promoTitle').textContent = ad.title;
+  $('#promoBody').textContent = ad.body || '';
+  const cta = $('#promoCta');
+  if (ad.service_id && SERVICES.some((s) => s.id === ad.service_id)) {
+    cta.hidden = false;
+    cta.removeAttribute('href');
+    $('#promoCtaText').textContent = 'Book this offer';
+    cta.onclick = () => { selectService(ad.service_id, true); gotoBooking(); };
+  } else if (ad.link_url) {
+    cta.hidden = false;
+    cta.href = ad.link_url;
+    cta.target = '_blank';
+    cta.rel = 'noopener';
+    cta.onclick = null;
+    $('#promoCtaText').textContent = 'Learn more';
+  } else {
+    cta.hidden = true;
+  }
+  wrap.hidden = false;
+}
+
+function initPromoBanner() {
+  $('#promoClose')?.addEventListener('click', () => {
+    $('#promoBanner').hidden = true;
+    try { if (LIVE.banner) sessionStorage.setItem('fs-promo-dismissed', String(LIVE.banner.id)); } catch { /* ignore */ }
+  });
+}
+
+/* Admin-mode footer: backend status + staff session shortcuts. */
+function updateBackendStatus(result) {
+  const wrap = $('#backendStatus');
+  const text = $('#backendStatusText');
+  if (!wrap || !text) return;
+  wrap.classList.remove('is-live', 'is-offline');
+  if (result.connected) {
+    wrap.classList.add('is-live');
+    text.textContent = 'Backend · Supabase live';
+    wrap.title = 'Content is served live from the Supabase backend';
+  } else {
+    wrap.classList.add('is-offline');
+    text.textContent = result.schemaMissing ? 'Backend · setup pending' : 'Backend · offline (built-in content)';
+    wrap.title = result.schemaMissing
+      ? 'Run supabase/install.sql in the Supabase SQL editor to activate the backend'
+      : 'Could not reach Supabase — showing built-in content';
+  }
+}
+
+async function initAdminBar() {
+  const link = $('#adminModeLink');
+  const label = $('#adminModeLabel');
+  const sessionEl = $('#adminSession');
+  const signOut = $('#adminSignOut');
+  if (!supabase || !link) return;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: adminRow } = await withTimeout(
+        supabase.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle(),
+        8000,
+        'admin check'
+      );
+      if (adminRow) {
+        label.textContent = 'Open Admin Dashboard';
+        sessionEl.hidden = false;
+        sessionEl.innerHTML = `${svg('i-shield')} Admin mode active · <strong>${session.user.email}</strong>`;
+        signOut.hidden = false;
+        $('#adminBar').classList.add('is-admin');
+        signOut.addEventListener('click', async () => {
+          await supabase.auth.signOut();
+          window.location.reload();
+        });
+      }
+    }
+  } catch { /* footer stays in visitor mode */ }
+}
+
 /* ═══════════ Init ═══════════ */
 initTheme();
 renderBarbers();
@@ -880,5 +1044,10 @@ renderSocials();
 renderFaqs();
 initHeader();
 initTicker();
+initPromoBanner();
 $('#year').textContent = String(new Date().getFullYear());
 runLoader();
+
+/* Backend wiring runs after first paint — the site never waits on it. */
+hydrateLiveContent();
+initAdminBar();
