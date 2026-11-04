@@ -94,6 +94,10 @@
       <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h16"/></symbol>
       <symbol id="i-quote" viewBox="0 0 24 24"><path fill="currentColor" d="M10.2 7.2C7.6 8.4 5.8 10.6 5.8 13.7c0 2.1 1.3 3.6 3.1 3.6 1.6 0 2.8-1.2 2.8-2.8 0-1.5-1-2.6-2.5-2.7.3-1.2 1.1-2.2 2.3-2.9l-1.3-1.7zm8 0c-2.6 1.2-4.4 3.4-4.4 6.5 0 2.1 1.3 3.6 3.1 3.6 1.6 0 2.8-1.2 2.8-2.8 0-1.5-1-2.6-2.5-2.7.3-1.2 1.1-2.2 2.3-2.9l-1.3-1.7z"/></symbol>
       <symbol id="i-google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.27c0-.92-.08-1.6-.26-2.31H12v4.19h6.44a5.52 5.52 0 01-2.4 3.58v2.86h3.87c2.26-2.09 3.59-5.17 3.59-8.32z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-2.86c-1.08.72-2.45 1.16-4.06 1.16-3.12 0-5.76-2.11-6.7-4.96H1.29v2.96A11.99 11.99 0 0012 24z"/><path fill="#FBBC05" d="M5.3 14.43a7.2 7.2 0 010-4.86V6.61H1.29a12 12 0 000 10.78L5.3 14.43z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.34-3.34A11.98 11.98 0 0012 0 11.99 11.99 0 001.29 6.61l4.01 2.96C6.24 6.86 8.88 4.75 12 4.75z"/></symbol>
+      <symbol id="i-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1.5 1.5 0 001.5 1.5H7l9 4.5V4.5L7 9H4.5A1.5 1.5 0 003 10.5z"/><path d="M16 9.5a3.5 3.5 0 010 5M8.5 15.5l1 4.5h2.5l-.8-4.2"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.2" r="1.3" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7.3" height="9" rx="1.8"/><rect x="13.2" y="3.5" width="7.3" height="5.5" rx="1.8"/><rect x="13.2" y="11.4" width="7.3" height="9" rx="1.8"/><rect x="3.5" y="14.9" width="7.3" height="5.5" rx="1.8"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H7a2 2 0 00-2 2v12a2 2 0 002 2h7"/><path d="M17 8l4 4-4 4M21 12H10"/></symbol>
     </svg>
 
     <!-- ══════════════ LOADING SCREEN ══════════════ -->
@@ -199,6 +203,16 @@
         </div>
       </div>
     </header>
+
+    <!-- ══════════════ LIVE PROMO BANNER (managed in Admin → Ads) ══════════════ -->
+    <div class="promo-banner" id="promoBanner" role="region" aria-label="Announcement" hidden>
+      <div class="shell promo-banner__inner">
+        <span class="promo-banner__ic"><svg class="ic"><use href="#i-megaphone"/></svg></span>
+        <p class="promo-banner__text"><strong id="promoTitle"></strong><span id="promoBody"></span></p>
+        <a class="btn btn--gold btn--sm promo-banner__cta" id="promoCta" hidden><span class="btn__shine"></span><span id="promoCtaText">Learn more</span> <svg class="ic"><use href="#i-arrow"/></svg></a>
+        <button class="icon-btn promo-banner__close" id="promoClose" type="button" aria-label="Dismiss announcement"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+    </div>
 
     <main id="top">
       <!-- ════════ HERO — Hickson hero layout, barber theme ════════ -->
@@ -781,6 +795,25 @@
       <div class="shell footer__legal">
         <p>© <span id="year">2026</span> Fresh Start Grooming Lounge · Fresh Start Barbers. All rights reserved.</p>
         <p>Nairobi, Kenya · <span class="footer__stars" aria-hidden="true">★★★★★</span> 5.0 Google Verified · Every haircut is a fresh start.</p>
+      </div>
+
+      <!-- ══════════════ ADMIN MODE FOOTER ══════════════ -->
+      <div class="admin-bar" id="adminBar">
+        <div class="shell admin-bar__inner">
+          <span class="admin-bar__status" id="backendStatus" title="Supabase backend connection">
+            <span class="admin-bar__dot" aria-hidden="true"></span>
+            <span id="backendStatusText">Checking backend…</span>
+          </span>
+          <span class="admin-bar__session" id="adminSession" hidden></span>
+          <span class="admin-bar__actions">
+            <button class="admin-bar__signout" id="adminSignOut" type="button" hidden>
+              <svg class="ic"><use href="#i-logout"/></svg> Sign out
+            </button>
+            <a class="admin-bar__link" id="adminModeLink" href="/admin.html">
+              <svg class="ic"><use href="#i-lock"/></svg> <span id="adminModeLabel">Admin Mode</span>
+            </a>
+          </span>
+        </div>
       </div>
     </footer>
 

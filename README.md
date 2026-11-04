@@ -11,7 +11,75 @@ same section-by-section structure and flow, but dressed entirely in the Fresh St
 barber content, plus livelier header/footer and a full **Google Reviews** section.
 
 Built as a hand-crafted static site (Vite + vanilla JS, no framework runtime) with self-hosted
-variable fonts, local photography and a WhatsApp reservation flow.
+variable fonts, local photography and a WhatsApp reservation flow — now backed by a
+**Supabase backend** with a full **Admin Mode** dashboard at `/admin`.
+
+---
+
+## 🗄️ Backend — Supabase + Admin Mode
+
+| Piece | Where |
+| --- | --- |
+| Supabase project | `https://nhvokxemyaymmqruzpcp.supabase.co` |
+| Client (publishable key — browser-safe) | `src/lib/supabase.js` |
+| Live content hydration + fallback | `src/lib/content.js` |
+| Schema + security + storage | `supabase/schema.sql` |
+| Seed content (matches the website) | `supabase/seed.sql` |
+| **One-paste installer (schema + seed)** | **`supabase/install.sql`** |
+| Admin dashboard | `admin.html` + `src/admin.js` + `src/admin.css` → `/admin` |
+| Admin-mode footer on the website | bottom of `index.html` (`#adminBar`) |
+
+### One-time activation (~2 minutes)
+
+1. **Run the installer** — open the [Supabase SQL editor](https://supabase.com/dashboard/project/nhvokxemyaymmqruzpcp/sql/new),
+   paste the whole of **`supabase/install.sql`** and click **Run**.
+   This creates the tables, row-level security, the public `site-images` storage bucket,
+   and seeds the current 25 services, 5 barbers, 9 gallery frames, ticker ads and 9 reviews.
+2. **Create your admin login** — Supabase dashboard → **Authentication → Users → Add user**
+   (enter email + password, tick **Auto Confirm User**).
+3. **Claim admin** — open `/admin` on the website, sign in with that account and click
+   **Claim admin access**. The first account to claim becomes the admin; after that only
+   allow-listed admins can manage anything.
+
+> Until the installer is run (or if Supabase is unreachable) the website keeps working
+> from the built-in content in `src/data.js` — the footer shows
+> *“Backend · offline (built-in content)”* and switches to *“Backend · Supabase live”*
+> once connected. Empty tables also fall back to built-in content.
+
+### What admins can do (`/admin`)
+
+- **Overview** — live counts, quick actions, latest booking requests, backend info.
+- **Services** — full CRUD on the 25-ritual menu: prices, chair time, categories, badges,
+  VIP flags, day restrictions (e.g. Mbogi Mon–Wed), search tags, sort order, live/hidden toggle.
+- **Barbers** — full CRUD on the crew, with **portrait upload** straight to Supabase Storage.
+- **Gallery & Images** — **upload new images** (JPG/PNG/WebP/AVIF ≤ 10 MB), edit captions &
+  categories, link frames to bookable services, **delete old ones** (the storage file is
+  removed with the frame), plus a **storage browser** listing every uploaded file with
+  in-use markers, copy-URL and delete.
+- **Ads & Offers** — create/edit/schedule announcements: **ticker** ads rotate in the top
+  bar; **banner** ads show as a dismissible gold strip under the header with an optional
+  “Book this offer” / link button. Start/end dates supported.
+- **Reviews** — manage the Google-style review carousel entries.
+- **Bookings** — every website reservation is mirrored into this inbox (customers still
+  confirm on WhatsApp). Filter, view details, one-tap WhatsApp the client, and mark
+  new → confirmed → completed / cancelled.
+
+### Security model
+
+- The publishable key in the browser is **safe**: every table has Row Level Security.
+- Visitors (anon) can only **read active content** and **submit booking requests**.
+- Writes require a signed-in user on the `admin_users` allow-list (`public.is_admin()`).
+- Storage: public read, admin-only upload/update/delete, image MIME types only, 10 MB cap.
+- To add another admin later: create their user in Supabase Auth, then run
+  `insert into public.admin_users (user_id, email) select id, email from auth.users where email = 'them@example.com';`
+- Recommended: Supabase → Authentication → Providers → Email → turn **off** “Allow new users to sign up”
+  (accounts are created by the owner in the dashboard).
+
+### Admin-mode footer
+
+The website footer ends with a slim staff bar: backend connection status
+(green = Supabase live, gold = offline/setup pending), an **Admin Mode** link to `/admin`,
+and — when an admin is signed in — their email plus a sign-out shortcut.
 
 ---
 
@@ -104,6 +172,11 @@ bar, JSON-LD `HairSalon`, `prefers-reduced-motion` support.
 ---
 
 ## Editing content
+
+**Day-to-day changes are made in Admin Mode (`/admin`)** — services, barbers, gallery
+images, ads, reviews and bookings are served live from Supabase. `src/data.js` remains
+the built-in fallback used when the backend is offline or a table is empty, and still
+owns the static copy (hours, FAQs, process steps, pillars, refreshments, business info).
 
 All copy, prices, barbers, hours, reviews and gallery data live in **`src/data.js`**:
 
